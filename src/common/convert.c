@@ -127,7 +127,7 @@ uint64_t string2uint_range(const char *str, int start, int end) {
 
     if (sign_bit == 0) {
         return uv;
-    } else if (sign_bit == 1) {
+    } else {
         if ((uv & 0x8000000000000000) != 0) {
             printf("(int64_t)%s: signed overflow: cannot convert\n", str);
             exit(0);

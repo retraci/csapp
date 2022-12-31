@@ -18,7 +18,7 @@ void TestParsingOperand();
 void TestParsingInstruction();
 
 int main() {
-    TestAddFunctionCallAndComputation();
+    TestSumRecursiveCondition();
     return 0;
 }
 
@@ -28,23 +28,23 @@ static void TestString2Uint() {
 static void TestAddFunctionCallAndComputation() {
     ACTIVE_CORE = 0x0;
 
-    core_t *ac = (core_t *) &cores[ACTIVE_CORE];
+    core_t *cr = (core_t *) &cores[ACTIVE_CORE];
 
     // init state
-    ac->reg.rax = 0xabcd;
-    ac->reg.rbx = 0x8000670;
-    ac->reg.rcx = 0x8000670;
-    ac->reg.rdx = 0x12340000;
-    ac->reg.rsi = 0x7ffffffee208;
-    ac->reg.rdi = 0x1;
-    ac->reg.rbp = 0x7ffffffee110;
-    ac->reg.rsp = 0x7ffffffee0f0;
+    cr->reg.rax = 0xabcd;
+    cr->reg.rbx = 0x8000670;
+    cr->reg.rcx = 0x8000670;
+    cr->reg.rdx = 0x12340000;
+    cr->reg.rsi = 0x7ffffffee208;
+    cr->reg.rdi = 0x1;
+    cr->reg.rbp = 0x7ffffffee110;
+    cr->reg.rsp = 0x7ffffffee0f0;
 
-    write64bits_dram(va2pa(0x7ffffffee110, ac), 0x0000000000000000, ac);    // rbp
-    write64bits_dram(va2pa(0x7ffffffee108, ac), 0x0000000000000000, ac);
-    write64bits_dram(va2pa(0x7ffffffee100, ac), 0x0000000012340000, ac);
-    write64bits_dram(va2pa(0x7ffffffee0f8, ac), 0x000000000000abcd, ac);
-    write64bits_dram(va2pa(0x7ffffffee0f0, ac), 0x0000000000000000, ac);    // rsp
+    write64bits_dram(va2pa(0x7ffffffee110, cr), 0x0000000000000000, cr);    // rbp
+    write64bits_dram(va2pa(0x7ffffffee108, cr), 0x0000000000000000, cr);
+    write64bits_dram(va2pa(0x7ffffffee100, cr), 0x0000000012340000, cr);
+    write64bits_dram(va2pa(0x7ffffffee0f8, cr), 0x000000000000abcd, cr);
+    write64bits_dram(va2pa(0x7ffffffee0f0, cr), 0x0000000000000000, cr);    // rsp
 
     // 2 before call
     // 3 after call before push
@@ -66,37 +66,38 @@ static void TestAddFunctionCallAndComputation() {
             "retq",                     // 10
             "mov    %rdx,%rsi",         // 11
             "mov    %rax,%rdi",         // 12
-            "callq  0",                 // 13
+            "callq  0x00400000",        // 13
             "mov    %rax,-0x8(%rbp)",   // 14
     };
-    ac->rip = (uint64_t) &assembly[11];
-    sprintf(assembly[13], "callq  $%p", &assembly[0]);
-
-    printf("%p\n", &assembly[14]);
+    // copy to physical memory
+    for (int i = 0; i < 15; i++) {
+        writeinst_dram(va2pa(i * MAX_INSTRUCTION_CHAR * sizeof(char) + 0x00400000, cr), assembly[i], cr);
+    }
+    int start = 11;
+    cr->rip = MAX_INSTRUCTION_CHAR * sizeof(char) * start + 0x00400000;
 
     printf("begin\n");
-
-    print_register(ac);
-    print_stack(ac);
+    print_register(cr);
+    print_stack(cr);
 
     int time = 0;
     while (time < 15) {
-        instruction_cycle(ac);
-        print_register(ac);
-        print_stack(ac);
+        instruction_cycle(cr);
+        print_register(cr);
+        print_stack(cr);
         time++;
     }
 
     // gdb state ret from func
     int match = 1;
-    match = match && ac->reg.rax == 0x1234abcd;
-    match = match && ac->reg.rbx == 0x8000670;
-    match = match && ac->reg.rcx == 0x8000670;
-    match = match && ac->reg.rdx == 0xabcd;
-    match = match && ac->reg.rsi == 0x12340000;
-    match = match && ac->reg.rdi == 0xabcd;
-    match = match && ac->reg.rbp == 0x7ffffffee110;
-    match = match && ac->reg.rsp == 0x7ffffffee0f0;
+    match = match && cr->reg.rax == 0x1234abcd;
+    match = match && cr->reg.rbx == 0x8000670;
+    match = match && cr->reg.rcx == 0x8000670;
+    match = match && cr->reg.rdx == 0xabcd;
+    match = match && cr->reg.rsi == 0x12340000;
+    match = match && cr->reg.rdi == 0xabcd;
+    match = match && cr->reg.rbp == 0x7ffffffee110;
+    match = match && cr->reg.rsp == 0x7ffffffee0f0;
 
     if (match) {
         printf("register match\n");
@@ -104,11 +105,11 @@ static void TestAddFunctionCallAndComputation() {
         printf("register mismatch\n");
     }
 
-    match = match && (read64bits_dram(va2pa(0x7ffffffee110, ac), ac) == 0x0000000000000000); // rbp
-    match = match && (read64bits_dram(va2pa(0x7ffffffee108, ac), ac) == 0x000000001234abcd);
-    match = match && (read64bits_dram(va2pa(0x7ffffffee100, ac), ac) == 0x0000000012340000);
-    match = match && (read64bits_dram(va2pa(0x7ffffffee0f8, ac), ac) == 0x000000000000abcd);
-    match = match && (read64bits_dram(va2pa(0x7ffffffee0f0, ac), ac) == 0x0000000000000000); // rsp
+    match = match && (read64bits_dram(va2pa(0x7ffffffee110, cr), cr) == 0x0000000000000000); // rbp
+    match = match && (read64bits_dram(va2pa(0x7ffffffee108, cr), cr) == 0x000000001234abcd);
+    match = match && (read64bits_dram(va2pa(0x7ffffffee100, cr), cr) == 0x0000000012340000);
+    match = match && (read64bits_dram(va2pa(0x7ffffffee0f8, cr), cr) == 0x000000000000abcd);
+    match = match && (read64bits_dram(va2pa(0x7ffffffee0f0, cr), cr) == 0x0000000000000000); // rsp
 
     if (match) {
         printf("memory match\n");
@@ -160,15 +161,15 @@ static void TestSumRecursiveCondition() {
     };
 
     // copy to physical memory
-    for (int i = 0; i < 19; ++i) {
-        writeinst_dram(va2pa(i * 0x40 + 0x00400000, cr), assembly[i], cr);
+    for (int i = 0; i < 19; i++) {
+        writeinst_dram(va2pa(i * MAX_INSTRUCTION_CHAR * sizeof(char) + 0x00400000, cr), assembly[i], cr);
     }
-    cr->rip = MAX_INSTRUCTION_CHAR * sizeof(char) * 16 + 0x00400000;
+    int start = 16;
+    cr->rip = MAX_INSTRUCTION_CHAR * sizeof(char) * start + 0x00400000;
 
     printf("begin\n");
     int time = 0;
-    while ((cr->rip <= 18 * 0x40 + 0x00400000) &&
-           time < MAX_NUM_INSTRUCTION_CYCLE) {
+    while ((cr->rip <= 18 * 0x40 + 0x00400000) && time < MAX_NUM_INSTRUCTION_CYCLE) {
         instruction_cycle(cr);
         print_register(cr);
         print_stack(cr);
