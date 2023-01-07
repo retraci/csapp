@@ -1,4 +1,5 @@
 /cmake-build-debug
+/.idea
 
 exe_linker
 exe_hardware

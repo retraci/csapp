@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <headers/common.h>
+#include "headers/common.h"
 
 uint64_t string2uint(const char *str) {
     int end = strlen(str) - 1;

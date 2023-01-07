@@ -1,4 +1,4 @@
-// include guards to prevent double declaration of any identifiers 
+// include guards to prevent double declaration of any identifiers
 // such as types, enums and static variables
 #ifndef CPU_GUARD
 #define CPU_GUARD
@@ -13,7 +13,7 @@
 // struct of registers in each core
 // resource accessible to the core itself only
 
-typedef struct REGISTER_STRUCT {
+typedef struct {
     // return value
     union {
         uint64_t rax;
@@ -156,7 +156,8 @@ typedef struct REGISTER_STRUCT {
         uint16_t r15w;
         uint8_t r15b;
     };
-} reg_t;
+} cpu_reg_t;
+cpu_reg_t cpu_reg;
 
 /*======================================*/
 /*      cpu core                        */
@@ -190,49 +191,34 @@ typedef struct REGISTER_STRUCT {
 */
 
 // the 4 flags be a uint64_t in total
-typedef struct CPU_FLAGS_STRUCT {
-    union {
-        uint64_t __cpu_flag_value;
-        struct {
-            // carry flag: detect overflow for unsigned operations
-            uint16_t CF;
-            // zero flag: result is zero
-            uint16_t ZF;
-            // sign flag: result is negative: highest bit
-            uint16_t SF;
-            // overflow flag: detect overflow for signed operations
-            uint16_t OF;
-        };
+typedef union {
+    uint64_t __flags_value;
+    struct {
+        // carry flag: detect overflow for unsigned operations
+        uint16_t CF;
+        // zero flag: result is zero
+        uint16_t ZF;
+        // sign flag: result is negative: highest bit
+        uint16_t SF;
+        // overflow flag: detect overflow for signed operations
+        uint16_t OF;
     };
-} cpu_flag_t;
+} cpu_flags_t;
+cpu_flags_t cpu_flags;
 
-typedef struct CORE_STRUCT {
-    // program counter or instruction pointer
-    union {
-        uint64_t rip;
-        uint32_t eip;
-    };
-
-    // condition code flags of most recent (latest) operation
-    // condition codes will only be set by the following integer arithmetic instructions
-    cpu_flag_t flags;
-
-    // register files
-    reg_t reg;
-} core_t;
-
-// define cpu core array to support core level parallelism
-#define NUM_CORES 1
-core_t cores[NUM_CORES];
-// active core for current task
-uint64_t ACTIVE_CORE;
+// program counter or instruction pointer
+typedef union {
+    uint64_t rip;
+    uint32_t eip;
+} cpu_pc_t;
+cpu_pc_t cpu_pc;
 
 // move to common.h to be shared by linker
 // #define MAX_INSTRUCTION_CHAR 64
 #define NUM_INSTRTYPE 14
 
 // CPU's instruction cycle: execution of instructions
-void instruction_cycle(core_t *cr);
+void instruction_cycle();
 
 /*--------------------------------------*/
 // place the functions here because they requires the core_t type
@@ -242,7 +228,7 @@ void instruction_cycle(core_t *cr);
 
 // translate the virtual address to physical address in MMU
 // each MMU is owned by each core
-uint64_t va2pa(uint64_t vaddr, core_t *cr);
+uint64_t va2pa(uint64_t vaddr);
 
 // end of include guard
 #endif
