@@ -131,7 +131,27 @@ def build(key):
                 "./src/linker/staticlink.c",
                 "-o", EXE_BIN_LINKER
             ],
-        ]
+        ],
+        "mesi": [
+            [
+                "/usr/bin/gcc",
+                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-but-set-variable",
+                "-I", "./src",
+                # "-DDEBUG",
+                "./src/mains/mesi.c",
+                "-o", "./bin/mesi"
+            ],
+        ],
+        "false_sharing": [
+            [
+                "/usr/bin/gcc",
+                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-but-set-variable", "-Wno-unused-variable",
+                "-I", "./src",
+                "-pthread",
+                "./src/mains/false_sharing.c",
+                "-o", "./bin/false_sharing"
+            ],
+        ],
     }
 
     if not key in gcc_map:
@@ -147,6 +167,8 @@ def run(key):
         KEY_MACHINE: [EXE_BIN_MACHINE],
         KEY_LINKER: [EXE_BIN_LINKER],
         "dll": ["./bin/link", "main", "sum", "-o", "output"],
+        "mesi": ["./bin/mesi"],
+        "false_sharing": ["./bin/false_sharing"],
     }
     if not key in bin_map:
         print("input the correct binary key:", bin_map.keys())
@@ -183,6 +205,56 @@ def mem_check(key):
     ])
 
 
+def cache_verify():
+    make_build_directory()
+    csim_ref_file = os.path.abspath("./files/cache/csim-ref")
+    trace_dir = os.path.abspath("./files/cache/traces/")
+
+    assert (os.path.isfile(csim_ref_file))
+    assert (os.path.isdir(trace_dir))
+
+    test_cases = [
+        # s E b
+        [   2,  1,      2,  "wide.trace"    ],
+        [   3,  2,      2,  "load.trace"    ],
+        [   1,  1,      1,  "yi2.trace"     ],
+        [   4,  2,      4,  "yi.trace"      ],
+        [   2,  1,      4,  "dave.trace"    ],
+        [   2,  1,      3,  "trans.trace"   ],
+        [   2,  2,      3,  "trans.trace"   ],
+        [   14, 1024,   3,  "trans.trace"   ],
+        [   5,  1,      5,  "trans.trace"   ],
+        [   5,  1,      5,  "long.trace"    ],
+    ]
+
+    debug = 0
+    if debug == 1:
+        [s, E, b, file] = test_cases[1]
+        a = [
+            "/usr/bin/python3",
+            os.path.abspath("./src/mains/cache_verify.py"),
+            os.path.abspath("./files/cache/csim-ref"),
+            os.path.abspath("./files/cache/traces/" + file),
+            str(s), str(E), str(b),
+            "debug"
+        ]
+        print(" ".join(a))
+        subprocess.run(a)
+    else:
+        for [s, E, b, file] in test_cases:
+            # need to reload shared library for each test run
+            # thus we start a new process
+            a = [
+                "/usr/bin/python3",
+                os.path.abspath("./src/mains/cache_verify.py"),
+                os.path.abspath("./files/cache/csim-ref"),
+                os.path.abspath("./files/cache/traces/" + file),
+                str(s), str(E), str(b)
+            ]
+            print(" ".join(a))
+            subprocess.run(a)
+
+
 if __name__ == '__main__':
     # print arguments
     i = 0
@@ -193,29 +265,31 @@ if __name__ == '__main__':
 
     # main
     assert (len(sys.argv) >= 2)
-    argv_1_lower = sys.argv[1].lower()
+    op = sys.argv[1].lower()
 
-    if "build".startswith(argv_1_lower):
+    if "build".startswith(op):
         assert (len(sys.argv) == 3)
         build(sys.argv[2])
-    elif "run".startswith(argv_1_lower):
+    elif "run".startswith(op):
         assert (len(sys.argv) == 3)
         run(sys.argv[2])
-    elif "debug".startswith(argv_1_lower):
+    elif "debug".startswith(op):
         assert (len(sys.argv) == 3)
         debug(sys.argv[2])
-    elif KEY_MACHINE.lower().startswith(argv_1_lower):
+    elif KEY_MACHINE.lower().startswith(op):
         build(KEY_MACHINE)
         run(KEY_MACHINE)
-    elif KEY_LINKER.lower().startswith(argv_1_lower):
+    elif KEY_LINKER.lower().startswith(op):
         build(KEY_LINKER)
         run(KEY_LINKER)
-    elif "memorycheck".startswith(argv_1_lower):
+    elif op == "memorycheck":
         assert (len(sys.argv) == 3)
         mem_check(sys.argv[2])
-    elif "count".startswith(argv_1_lower):
+    elif op == "count":
         count_lines()
-    elif "clean".startswith(argv_1_lower):
+    elif op == "clean":
         pass
-    elif "format".startswith(argv_1_lower):
+    elif op == "format":
         format_code()
+    elif op == "csim":
+        cache_verify()
