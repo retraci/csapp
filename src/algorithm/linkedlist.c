@@ -35,10 +35,9 @@ void linkedlist_free(linkedlist_t *list) {
     free(list);
 }
 
-int linkedlist_add(linkedlist_t **address, uint64_t value) {
-    linkedlist_t *list = *address;
+linkedlist_t* linkedlist_add(linkedlist_t *list, uint64_t value) {
     if (list == NULL) {
-        return 0;
+        return NULL;
     }
 
     if (list->count == 0) {
@@ -59,7 +58,7 @@ int linkedlist_add(linkedlist_t **address, uint64_t value) {
         node->prev->next = node;
         list->count++;
     }
-    return 1;
+    return list;
 }
 
 int linkedlist_delete(linkedlist_t *list, linkedlist_node_t *node) {

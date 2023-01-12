@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "headers/common.h"
 #include "headers/algorithm.h"
 
 array_t *array_construct(int size) {
@@ -17,10 +16,9 @@ void array_free(array_t *arr) {
     free(arr);
 }
 
-int array_insert(array_t **addr, uint64_t value) {
-    array_t *arr = *addr;
+array_t* array_insert(array_t *arr, uint64_t value) {
     if (arr == NULL) {
-        return 0;
+        return NULL;
     }
 
     if (arr->count == arr->size) {
@@ -43,7 +41,7 @@ int array_insert(array_t **addr, uint64_t value) {
     arr->table[arr->count] = value;
     arr->count += 1;
 
-    return 1;
+    return arr;
 }
 
 int array_delete(array_t *arr, int index) {
@@ -96,13 +94,13 @@ int array_get(array_t *arr, int index, uint64_t *valptr) {
     }
 }
 
-void print_array(array_t *arr) {
-    if ((DEBUG_VERBOSE_SET & DEBUG_DATASTRUCTURE) == 0) {
-        return;
-    }
+#ifdef DEBUG_ARRAY
 
+void print_array(array_t *arr) {
     printf("array size: %u count: %u\n", arr->size, arr->count);
     for (int i = 0; i < arr->count; i++) {
         printf("\t[%d] %16lx\n", i, arr->table[i]);
     }
 }
+
+#endif

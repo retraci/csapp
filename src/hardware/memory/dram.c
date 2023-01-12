@@ -18,7 +18,7 @@ void sram_cache_write(uint64_t paddr, uint8_t data);
 
 // memory accessing used in instructions
 uint64_t cpu_read64bits_dram(uint64_t paddr) {
-    if (DEBUG_ENABLE_SRAM_CACHE == 1) {
+    if (DEBUG_ENABLE_SRAM_CACHE) {
         // try to load uint64_t from SRAM cache
         // little-endian
         uint64_t val = 0x0;
@@ -38,17 +38,17 @@ uint64_t cpu_read64bits_dram(uint64_t paddr) {
 }
 
 void cpu_write64bits_dram(uint64_t paddr, uint64_t data) {
-    if (DEBUG_ENABLE_SRAM_CACHE == 1) {
+    if (DEBUG_ENABLE_SRAM_CACHE) {
         // try to write uint64_t to SRAM cache
         // little-endian
         for (int i = 0; i < 8; i++) {
             sram_cache_write(paddr + i, (data >> (i * 8)) & 0xff);
         }
     } else {
-        // write to DRAM directly
         // little-endian
+        // write to DRAM directly
         for (int i = 0; i < 8; i++) {
-            pm[paddr + i] = (data >> (i * 8)) & 0xff);
+            pm[paddr + i] = (data >> (i * 8)) & 0xff;
         }
     }
 }

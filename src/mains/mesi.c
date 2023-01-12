@@ -362,7 +362,7 @@ int main() {
     print_cacheline();
 #endif
 
-    for (int i = 0; i < 1e7; i++) {
+    for (int i = 0; i < 1e6; i++) {
         int core_index = rand() % NUM_PROCESSOR;
         int op = rand() % 3;
 

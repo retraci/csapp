@@ -143,11 +143,15 @@ uint64_t string2uint_range(const char *str, int start, int end) {
 
 // convert uint32_t to its float
 uint32_t uint2float(uint32_t u) {
-    if (u == 0x00000000) return 0x00000000;
+    if (u == 0x00000000) {
+        return 0x00000000;
+    }
     // must be NORMALIZED
     // counting the position of highest 1: u[n]
     int n = 31;
-    while (0 <= n && (((u >> n) & 0x1) == 0x0)) n = n - 1;
+    while (0 <= n && (((u >> n) & 0x1) == 0x0)) {
+        n = n - 1;
+    }
 
     uint32_t e, f;
     //    seee eeee efff ffff ffff ffff ffff ffff

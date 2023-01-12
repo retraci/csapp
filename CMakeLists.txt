@@ -7,19 +7,21 @@ include_directories(src)
 
 add_executable(csapp
         src/algorithm/array.c
+        src/algorithm/bst.c
         src/algorithm/hashtable.c
         src/algorithm/linkedlist.c
+        src/algorithm/redblack.c
         src/algorithm/trie.c
 
         src/common/cleanup.c
         src/common/convert.c
-        src/common/print.c
         src/common/tagmalloc.c
 
         src/hardware/cpu/isa.c
         src/hardware/cpu/mmu.c
         src/hardware/cpu/sram.c
         src/hardware/memory/dram.c
+        src/hardware/memory/swap.c
 
         src/headers/address.h
         src/headers/algorithm.h
@@ -34,8 +36,5 @@ add_executable(csapp
 
         src/linker/parseElf.c
         src/linker/staticlink.c
-
-        src/tests/test_machine.c
-        src/tests/test_elf.c
 
         )

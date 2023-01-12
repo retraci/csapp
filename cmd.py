@@ -7,21 +7,17 @@ import os
 import subprocess
 from pathlib import Path
 
-KEY_MACHINE = "m"
-KEY_LINKER = "l"
-
-EXE_BIN_LINKER = "./bin/test_elf"
-EXE_BIN_MACHINE = "./bin/test_machine"
-
 
 def make_build_directory():
     if not os.path.isdir("./bin/"):
         os.mkdir("./bin/")
 
 
-def format_include(s):
+def format_include(s, line_index):
     a = "#include<headers/"
     b = "#include<"
+    update = False
+    old = s
 
     # check include
     if s.startswith(a):
@@ -31,18 +27,55 @@ def format_include(s):
                 l = list(s)
                 l[j] = "\""
                 s = "".join(l)
+        update = True
     elif s.startswith(b):
         s = "#include <" + s[len(b):]
+        update = True
+
+    if update:
+        print("\tline [%d] #include rule: \"%s\" ==> \"%s\"" % (line_index, old, s))
     return s
 
 
-def format_whiteline(s):
+def format_marco(s, line_index):
+    a = s.strip("\n")
+    a = a.strip(" ")
+    if len(a) >= 1 and a[len(a) - 1] == ";":
+        return s
+    if a.startswith("#if") or a.startswith("#endif") or a.startswith("#else") or a.startswith("#define"):
+        a = a + "\n"
+        print("\tline [%d] marco rule: \"%s\" ==> \"%s\"" % (line_index, s, a))
+        return a
+    return s
+
+
+def format_tag(s, line_index):
+    a = s.strip("\n")
+    a = a.strip(" ")
+    if len(a) >= 1 and a[len(a) - 1] == ";":
+        return s
+    charset = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U",
+               "V", "W", "X", "Y", "Z", "_"}
+    for i in range(len(a) - 1):
+        if not a[i] in charset:
+            return s
+    # are all in char set
+    if len(a) >= 1 and a[len(a) - 1] == ":":
+        # this is a tag
+        a = a + "\n"
+        print("\tline [%d] tag rule: \"%s\" ==> \"%s\"" % (line_index, s, a))
+        return a
+    return s
+
+
+def format_whiteline(s, line_index):
     space = 0
     for c in s:
         if c == ' ':
             space += 1
     if space == len(s) - 1 and s[-1] == '\n':
         s = "\n"
+        # print("\tline [%d] white line rule: delete" % (line_index))
     return s
 
 
@@ -55,9 +88,12 @@ def format_code():
         try:
             with open(filename, "r", encoding='ascii') as fr:
                 content = fr.readlines()
+                print(filename, ":")
                 for i in range(len(content)):
-                    content[i] = format_include(content[i])
-                    content[i] = format_whiteline(content[i])
+                    content[i] = format_include(content[i], i)
+                    content[i] = format_whiteline(content[i], i)
+                    content[i] = format_marco(content[i], i)
+                    content[i] = format_tag(content[i], i)
                 fr.close()
                 # reopen and write data: this is a safer approach
                 # try to not open in r+ mode
@@ -97,30 +133,34 @@ def count_lines():
 def build(key):
     make_build_directory()
     gcc_map = {
-        KEY_MACHINE: [
+        "isa": [
             [
                 "/usr/bin/gcc",
-                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-function",
+                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-function", "-Wno-unused-variable",
                 "-I", "./src",
-                "./src/tests/test_machine.c",
-                "./src/common/print.c",
+                "-DDEBUG_INSTRUCTION_CYCLE",
+                # "-DDEBUG_PARSE_INSTRUCTION",
+                # "-DDEBUG_INSTRUCTION_CYCLE_INFO_REG_STACK",
                 "./src/common/convert.c",
                 "./src/common/cleanup.c",
+                "./src/algorithm/hashtable.c",
                 "./src/algorithm/trie.c",
                 "./src/algorithm/array.c",
                 "./src/hardware/cpu/isa.c",
                 "./src/hardware/cpu/mmu.c",
                 "./src/hardware/memory/dram.c",
-                "-o", EXE_BIN_MACHINE
+                "-o", "./bin/isa"
             ]
         ],
-        KEY_LINKER: [
+        "elf": [
             [
                 "/usr/bin/gcc",
-                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-function",
+                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99",
+                "-Wno-unused-function",
+                "-Wno-unused-but-set-variable",
                 "-I", "./src",
-                "./src/tests/test_elf.c",
-                "./src/common/print.c",
+                "-DDEBUG_PARSE_ELF",
+                "-DDEBUG_LINK",
                 "./src/common/convert.c",
                 "./src/common/tagmalloc.c",
                 "./src/common/cleanup.c",
@@ -128,8 +168,7 @@ def build(key):
                 "./src/algorithm/hashtable.c",
                 "./src/algorithm/linkedlist.c",
                 "./src/linker/parseElf.c",
-                "./src/linker/staticlink.c",
-                "-o", EXE_BIN_LINKER
+                "-o", "./bin/elf"
             ],
         ],
         "mesi": [
@@ -152,6 +191,42 @@ def build(key):
                 "-o", "./bin/false_sharing"
             ],
         ],
+        "rb": [
+            [
+                "/usr/bin/gcc",
+                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-but-set-variable", "-Wno-unused-variable",
+                "-Wno-unused-function",
+                "-I", "./src",
+                "-DDEBUG_REDBLACK",
+                "./src/common/convert.c",
+                "./src/algorithm/bst.c",
+                "./src/algorithm/redblack.c",
+                "-o", "./bin/rb"
+            ],
+        ],
+        "trie": [
+            [
+                "/usr/bin/gcc",
+                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-but-set-variable", "-Wno-unused-variable",
+                "-Wno-unused-function",
+                "-I", "./src",
+                "-DDEBUG_TRIE",
+                "./src/algorithm/trie.c", "./src/algorithm/hashtable.c",
+                "-o", "./bin/trie"
+            ],
+        ],
+        "bst": [
+            [
+                "/usr/bin/gcc",
+                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-but-set-variable", "-Wno-unused-variable",
+                "-Wno-unused-function",
+                "-I", "./src",
+                "-DDEBUG_BST",
+                "./src/algorithm/bst.c",
+                "./src/common/convert.c",
+                "-o", "./bin/bst"
+            ],
+        ],
     }
 
     if not key in gcc_map:
@@ -164,11 +239,14 @@ def build(key):
 def run(key):
     assert (os.path.isdir("./bin/"))
     bin_map = {
-        KEY_MACHINE: [EXE_BIN_MACHINE],
-        KEY_LINKER: [EXE_BIN_LINKER],
-        "dll": ["./bin/link", "main", "sum", "-o", "output"],
+        "isa": ["./bin/isa"],
+        "elf": ["./bin/elf"],
+        "link": ["./bin/link", "main", "sum", "-o", "output"],
         "mesi": ["./bin/mesi"],
         "false_sharing": ["./bin/false_sharing"],
+        "rb": ["./bin/rb"],
+        "trie": ["./bin/trie"],
+        "bst": ["./bin/bst"],
     }
     if not key in bin_map:
         print("input the correct binary key:", bin_map.keys())
@@ -178,81 +256,65 @@ def run(key):
 
 def debug(key):
     assert (os.path.isdir("./bin/"))
+    gdb = "/usr/bin/gdb"
     bin_map = {
-        KEY_MACHINE: EXE_BIN_MACHINE,
-        KEY_LINKER: EXE_BIN_LINKER
+        "isa": [gdb, "./bin/isa"],
+        "link": [gdb, "--args", "./bin/link", "main", "sum", "-o", "output"],
     }
     if not key in bin_map:
         print("input the correct binary key:", bin_map.keys())
         exit()
-    subprocess.run(["/usr/bin/gdb", bin_map[key]])
+    subprocess.run(bin_map[key])
 
 
 def mem_check(key):
     assert (os.path.isdir("./bin/"))
     bin_map = {
-        KEY_MACHINE: EXE_BIN_MACHINE,
-        KEY_LINKER: EXE_BIN_LINKER
+        "isa": ["./bin/ut_isa"],
+        "link": ["./bin/link", "main", "sum", "-o", "output"]
     }
     if not key in bin_map:
         print("input the correct memory check key:", bin_map.keys())
         exit()
-    subprocess.run([
-        "/usr/bin/valgrind",
-        "--tool=memcheck",
-        "--leak-check=full",
-        bin_map[key]
-    ])
+    subprocess.run(["/usr/bin/valgrind",
+                    "--tool=memcheck",
+                    "--leak-check=full"] + bin_map[key])
 
 
 def cache_verify():
     make_build_directory()
-    csim_ref_file = os.path.abspath("./files/cache/csim-ref")
-    trace_dir = os.path.abspath("./files/cache/traces/")
+    csim_ref_file = "/mnt/e/Ubuntu/cache/csim-ref"
+    trace_dir = "/mnt/e/Ubuntu/cache/traces/"
 
     assert (os.path.isfile(csim_ref_file))
     assert (os.path.isdir(trace_dir))
 
     test_cases = [
         # s E b
-        [   2,  1,      2,  "wide.trace"    ],
-        [   3,  2,      2,  "load.trace"    ],
-        [   1,  1,      1,  "yi2.trace"     ],
-        [   4,  2,      4,  "yi.trace"      ],
-        [   2,  1,      4,  "dave.trace"    ],
-        [   2,  1,      3,  "trans.trace"   ],
-        [   2,  2,      3,  "trans.trace"   ],
-        [   14, 1024,   3,  "trans.trace"   ],
-        [   5,  1,      5,  "trans.trace"   ],
-        [   5,  1,      5,  "long.trace"    ],
+        [2, 1, 2, "wide.trace"],
+        [3, 2, 2, "load.trace"],
+        [1, 1, 1, "yi2.trace"],
+        [4, 2, 4, "yi.trace"],
+        [2, 1, 4, "dave.trace"],
+        [2, 1, 3, "trans.trace"],
+        [2, 2, 3, "trans.trace"],
+        [14, 1024, 3, "trans.trace"],
+        [5, 1, 5, "trans.trace"],
+        [5, 1, 5, "long.trace"],
     ]
 
-    debug = 0
-    if debug == 1:
-        [s, E, b, file] = test_cases[1]
+    for [s, E, b, file] in test_cases:
+        # need to reload shared library for each test run
+        # thus we start a new process
         a = [
             "/usr/bin/python3",
-            os.path.abspath("./src/mains/cache_verify.py"),
-            os.path.abspath("./files/cache/csim-ref"),
-            os.path.abspath("./files/cache/traces/" + file),
+            "./src/mains/cache_verify.py",
+            "/mnt/e/Ubuntu/cache/csim-ref",
+            "/mnt/e/Ubuntu/cache/traces/" + file,
             str(s), str(E), str(b),
-            "debug"
         ]
         print(" ".join(a))
         subprocess.run(a)
-    else:
-        for [s, E, b, file] in test_cases:
-            # need to reload shared library for each test run
-            # thus we start a new process
-            a = [
-                "/usr/bin/python3",
-                os.path.abspath("./src/mains/cache_verify.py"),
-                os.path.abspath("./files/cache/csim-ref"),
-                os.path.abspath("./files/cache/traces/" + file),
-                str(s), str(E), str(b)
-            ]
-            print(" ".join(a))
-            subprocess.run(a)
 
 
 if __name__ == '__main__':
@@ -265,31 +327,25 @@ if __name__ == '__main__':
 
     # main
     assert (len(sys.argv) >= 2)
-    op = sys.argv[1].lower()
+    operation = sys.argv[1].lower()
 
-    if "build".startswith(op):
+    if operation == "build":
         assert (len(sys.argv) == 3)
         build(sys.argv[2])
-    elif "run".startswith(op):
+    elif operation == "run":
         assert (len(sys.argv) == 3)
         run(sys.argv[2])
-    elif "debug".startswith(op):
+    elif operation == "debug":
         assert (len(sys.argv) == 3)
         debug(sys.argv[2])
-    elif KEY_MACHINE.lower().startswith(op):
-        build(KEY_MACHINE)
-        run(KEY_MACHINE)
-    elif KEY_LINKER.lower().startswith(op):
-        build(KEY_LINKER)
-        run(KEY_LINKER)
-    elif op == "memorycheck":
+    elif operation == "memcheck":
         assert (len(sys.argv) == 3)
         mem_check(sys.argv[2])
-    elif op == "count":
+    elif operation == "count":
         count_lines()
-    elif op == "clean":
+    elif operation == "clean":
         pass
-    elif op == "format":
+    elif operation == "format":
         format_code()
-    elif op == "csim":
+    elif operation == "csim":
         cache_verify()

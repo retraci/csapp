@@ -13,12 +13,94 @@
 // in this simulator, there are 4 + 6 + 6 = 16 bit physical adderss
 // then the physical space is (1 << 16) = 65536
 // total 16 physical memory
-#define PHYSICAL_MEMORY_SPACE   65536
-#define MAX_INDEX_PHYSICAL_PAGE 15
+#define PHYSICAL_MEMORY_SPACE   (65536)
+#define MAX_INDEX_PHYSICAL_PAGE (15)
+#define MAX_NUM_PHYSICAL_PAGE (16)    // 1 + MAX_INDEX_PHYSICAL_PAGE
+
+#define PAGE_TABLE_ENTRY_NUM    (512)
 
 // physical memory
 // 16 physical memory pages
+// used only for user process
 uint8_t pm[PHYSICAL_MEMORY_SPACE];
+
+// page table entry struct
+
+// 8 bytes = 64 bits
+typedef union {
+    uint64_t pte_value;
+
+    struct {
+        uint64_t present: 1;
+        uint64_t readonly: 1;
+        uint64_t usermode: 1;
+        uint64_t writethough: 1;
+        uint64_t cachedisabled: 1;
+        uint64_t reference: 1;
+        uint64_t unused6: 1;
+        uint64_t smallpage: 1;
+        uint64_t global: 1;
+        uint64_t unused9_11: 3;
+        /*
+        uint64_t paddr              : 40;
+        uint64_t unused52_62        : 11;
+
+        for malloc, a virtual address on heap is 48 bits
+        for real world, a physical page number is 40 bits
+        */
+        uint64_t paddr: 51;   // virtual address (48 bits) on simulator's heap
+        uint64_t xdisabled: 1;
+    };
+
+    struct {
+        uint64_t _present: 1;
+        uint64_t daddr: 63;   // disk address
+    };
+} pte123_t; // PGD, PUD, PMD
+
+// 8 bytes = 64 bits
+typedef union {
+    uint64_t pte_value;
+
+    struct {
+        uint64_t present: 1;    // present = 1
+        uint64_t readonly: 1;
+        uint64_t usermode: 1;
+        uint64_t writethough: 1;
+        uint64_t cachedisabled: 1;
+        uint64_t reference: 1;
+        uint64_t dirty: 1;    // dirty bit - 1: dirty; 0: clean
+        uint64_t zero7: 1;
+        uint64_t global: 1;
+        uint64_t unused9_11: 3;
+        uint64_t ppn: 40;
+        uint64_t unused52_62: 11;
+        uint64_t xdisabled: 1;
+    };
+
+    struct {
+        uint64_t _present: 1;    // present = 0
+        uint64_t daddr: 63;   // disk address
+    };
+} pte4_t;   // PT
+
+// physical page descriptor
+typedef struct {
+    int allocated;
+    int dirty;
+    int time;   // LRU cache
+
+    // real world: mapping to anon_vma or address_space
+    // we simply the situation here
+    // TODO: if multiple processes are using this page? E.g. Shared library
+    pte4_t *pte4;       // the reversed mapping: from PPN to page table entry
+    uint64_t daddr;   // binding the revesed mapping with mapping to disk
+} pd_t;
+
+// for each pagable (swappable) physical page
+// create one reversed mapping
+pd_t page_map[MAX_NUM_PHYSICAL_PAGE];
+
 
 /*======================================*/
 /*      memory R/W                      */

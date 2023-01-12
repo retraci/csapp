@@ -2,38 +2,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "headers/cpu.h"
-#include "headers/memory.h"
-#include "headers/common.h"
 #include "headers/algorithm.h"
-
-static int get_index(char c) {
-    if (c == '%') {
-        return 36;
-    } else if ('0' <= c && c <= '9') {
-        return c - '0';
-    } else if ('a' <= c && c <= 'z') {
-        return c - 'a' + 10;
-    }
-    return -1;
-}
-
-static char get_char(int id) {
-    assert(0 <= id && id <= 36);
-    if (id == 36) {
-        return '%';
-    } else if (0 <= id && id <= 9) {
-        return (char) ('0' + id);
-    } else if (10 <= id && id <= 35) {
-        return (char) ('a' + id - 10);
-    }
-    return '?';
-}
 
 // constructor
 trie_node_t *trie_construct() {
     trie_node_t *root = malloc(sizeof(trie_node_t));
-    root->isvalid = 0;
+    root->next = hashtable_construct(8);
+    root->isvalue = 0;
     root->value = 0;
     return root;
 }
@@ -46,48 +21,110 @@ void trie_free(trie_node_t *root) {
     if (root == NULL) {
         return;
     }
-    for (int i = 0; i <= 36; i++) {
-        trie_free(root->next[i]);
+
+    // free sub trees
+    hashtable_t *next_table = root->next;
+
+    if (next_table != NULL) {
+        // sub trees
+        for (int i = 0; i < next_table->num; i++) {
+            hashtable_bucket_t *b = next_table->directory[i];
+            for (int j = 0; j < b->counter; j++) {
+                uint64_t subtree_addr = b->varray[j];
+                trie_free((trie_node_t *) subtree_addr);
+            }
+        }
+
+        // free this hash table
+        hashtable_free(next_table);
     }
+
+    // free root node
     free(root);
 }
 
-int trie_insert(trie_node_t **address, char *key, uint64_t value) {
-    trie_node_t *p = *address;
+trie_node_t *trie_insert(trie_node_t *root, char *key, uint64_t value) {
+    trie_node_t *p = root;
     if (p == NULL) {
-        return 0;
+        return NULL;
     }
 
     for (int i = 0; i < strlen(key); i++) {
-        p->isvalid = 1;
-
-        int id = get_index(key[i]);
-        if (p->next[id] == NULL) {
-            p->next[id] = malloc(sizeof(trie_node_t));
-            p->next[id]->value = 0;
-            p->next[id]->isvalid = 0;
+        if (p->next == NULL) {
+            p->next = hashtable_construct(8);
         }
-        p = p->next[id];
+
+        // char as hash key
+        char hashkey[2];
+        hashkey[0] = key[i];
+        hashkey[1] = '\0';
+
+        uint64_t trie_node_addr;
+
+        if (hashtable_get(p->next, hashkey, &trie_node_addr) == 1) {
+            // found next node in this root
+            p = (trie_node_t *) trie_node_addr;
+            continue;
+        } else {
+            // no next node in this root
+            // create new node
+            trie_node_t *n = malloc(sizeof(trie_node_t));
+            n->value = 0;
+            n->isvalue = 0;
+            n->next = NULL;     // leaf node has no next
+
+            p->next = hashtable_insert(p->next, hashkey, (uint64_t) n);
+
+            // goto next node
+            p = n;
+            continue;
+        }
     }
 
     // may overwrite
     p->value = value;
-    p->isvalid = 1;
-    return 1;
+    p->isvalue = 1;
+    return root;
 }
 
 int trie_get(trie_node_t *root, char *key, uint64_t *valptr) {
     trie_node_t *p = root;
     for (int i = 0; i < strlen(key); i++) {
-        if (p == NULL || p->isvalid == 0) {
+        if (p == NULL) {
             // not found
             return 0;
         }
-        p = p->next[get_index(key[i])];
+
+        // go to next
+        if (p->next != NULL) {
+            char hashkey[2];
+            hashkey[0] = key[i];
+            hashkey[1] = '\0';
+
+            uint64_t trie_node_addr;
+            if (hashtable_get(p->next, hashkey, &trie_node_addr) == 1) {
+                // found next node
+                p = (trie_node_t *) trie_node_addr;
+                continue;
+            } else {
+                // not found next node
+                return 0;
+            }
+        } else {
+            // should have mapping here 
+            return 0;
+        }
     }
-    *valptr = p->value;
-    return 1;
+
+    if (p->isvalue == 1) {
+        *valptr = p->value;
+        return 1;
+    }
+
+    return 0;
 }
+
+#ifdef DEBUG_TRIE
 
 static void trie_dfs_print(trie_node_t *x, int level, char c) {
     if (x != NULL) {
@@ -98,17 +135,19 @@ static void trie_dfs_print(trie_node_t *x, int level, char c) {
             printf("[%c] %p\n", c, x);
         }
 
-        for (int j = 0; j <= 36; j++) {
-            trie_dfs_print(x->next[j], level + 1, get_char(j));
+        for (int j = 0; j < x->next->num; j++) {
+            hashtable_bucket_t *b = x->next->directory[j];
+            for (int k = 0; k < b->counter; k++) {
+                trie_node_t *subtree = (trie_node_t *) b->varray[k];
+                char *key = b->karray[k];
+                assert(strlen(key) >= 1);
+                trie_dfs_print(subtree, level + 1, key[0]);
+            }
         }
     }
 }
 
 void trie_print(trie_node_t *root) {
-    if ((DEBUG_VERBOSE_SET & DEBUG_DATASTRUCTURE) == 0) {
-        return;
-    }
-
     if (root == NULL) {
         printf("NULL\n");
     } else {
@@ -117,3 +156,36 @@ void trie_print(trie_node_t *root) {
 
     trie_dfs_print(root, 0, 0);
 }
+
+static void test_insert() {
+    printf("Testing Trie ...\n");
+
+    trie_node_t *root = trie_construct();
+    uint64_t result;
+
+    root = trie_insert(root, "abcd", 12);
+    root = trie_insert(root, "ab", 108);
+    root = trie_insert(root, "abef", 1022);
+
+    assert(trie_get(root, "abcd", &result) == 1);
+    assert(result == 12);
+    assert(trie_get(root, "ab", &result) == 1);
+    assert(result == 108);
+    assert(trie_get(root, "abef", &result) == 1);
+    assert(result == 1022);
+
+    assert(trie_get(root, "a", &result) == 0);
+    assert(trie_get(root, "abc", &result) == 0);
+    assert(trie_get(root, "b", &result) == 0);
+    assert(trie_get(root, "x", &result) == 0);
+
+    trie_free(root);
+
+    printf("\033[32;1m\tPass\033[0m\n");
+}
+
+int main() {
+    test_insert();
+}
+
+#endif
