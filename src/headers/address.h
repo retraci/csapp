@@ -57,18 +57,18 @@ typedef union {
 
     // virtual address: 48
     struct {
-        uint64_t vpo  : VIRTUAL_PAGE_OFFSET_LENGTH;
-        uint64_t vpn4 : VIRTUAL_PAGE_NUMBER_LENGTH;
-        uint64_t vpn3 : VIRTUAL_PAGE_NUMBER_LENGTH;
-        uint64_t vpn2 : VIRTUAL_PAGE_NUMBER_LENGTH;
-        uint64_t vpn1 : VIRTUAL_PAGE_NUMBER_LENGTH;
+        uint64_t vpo: VIRTUAL_PAGE_OFFSET_LENGTH;
+        uint64_t vpn4: VIRTUAL_PAGE_NUMBER_LENGTH;
+        uint64_t vpn3: VIRTUAL_PAGE_NUMBER_LENGTH;
+        uint64_t vpn2: VIRTUAL_PAGE_NUMBER_LENGTH;
+        uint64_t vpn1: VIRTUAL_PAGE_NUMBER_LENGTH;
     };
 
     // TLB cache: 48
     struct {
-        uint64_t tlbo : TLB_CACHE_OFFSET_LENGTH;   // virtual page offset
-        uint64_t tlbi : TLB_CACHE_INDEX_LENGTH;    // TLB set index
-        uint64_t tlbt : TLB_CACHE_TAG_LENGTH;      // TLB line tag
+        uint64_t tlbo: TLB_CACHE_OFFSET_LENGTH;   // virtual page offset
+        uint64_t tlbi: TLB_CACHE_INDEX_LENGTH;    // TLB set index
+        uint64_t tlbt: TLB_CACHE_TAG_LENGTH;      // TLB line tag
     };
 } address_t;
 

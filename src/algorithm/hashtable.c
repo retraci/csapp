@@ -34,7 +34,7 @@ hashtable_t *hashtable_construct(int size) {
     tab->num = 1 << tab->globaldepth;
 
     tab->size = size;
-    tab->directory = malloc(tab->num * sizeof(hashtable_bucket_t * ));
+    tab->directory = malloc(tab->num * sizeof(hashtable_bucket_t *));
     for (int i = 0; i < tab->num; i++) {
         hashtable_bucket_t *b = malloc(sizeof(hashtable_bucket_t));
         b->localdepth = 1;
@@ -109,7 +109,7 @@ int hashtable_get(hashtable_t *tab, char *key, uint64_t *valptr) {
     return 0;
 }
 
-hashtable_t* hashtable_insert(hashtable_t *tab, char *key, uint64_t value) {
+hashtable_t *hashtable_insert(hashtable_t *tab, char *key, uint64_t value) {
     assert(tab != NULL);
 
     uint64_t hid64 = hash_function(key);
@@ -130,7 +130,7 @@ hashtable_t* hashtable_insert(hashtable_t *tab, char *key, uint64_t value) {
             // double
             tab->globaldepth += 1;
             tab->num = 1 << tab->globaldepth;
-            tab->directory = malloc(tab->num * sizeof(hashtable_bucket_t * ));
+            tab->directory = malloc(tab->num * sizeof(hashtable_bucket_t *));
 
             // copy the old array to the new
             for (int i = 0; i < old_num; i++) {

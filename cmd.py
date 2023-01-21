@@ -13,6 +13,32 @@ def make_build_directory():
         os.mkdir("./bin/")
 
 
+def add_copyright_header():
+    # get files with paths
+    filelist = list(Path(".").rglob("*.[ch]"))
+
+    # recursively add lines to every .c and .h file
+    print("recursively add lines to every .c and .h file")
+    for filename in filelist:
+        try:
+            with open(filename, "r", encoding='ascii') as fr:
+                content = fr.read()
+                if content.startswith("/* BCST - Introduction to Computer Systems"):
+                    print("\tskip\t%s" % filename)
+                    fr.close()
+                    continue
+                else:
+                    fr.close()
+                    # reopen and write data: this is a safer approach
+                    # try to not open in r+ mode
+                    print("\tprepend\t%s" % filename)
+                    with open(filename, "w", encoding='ascii') as fw:
+                        fw.write(notification + content)
+                        fw.close()
+        except UnicodeDecodeError:
+            print(filename)
+
+
 def format_include(s, line_index):
     a = "#include<headers/"
     b = "#include<"
@@ -114,6 +140,9 @@ def count_lines():
         count = 0
         for index, line in enumerate(open(filename, 'r')):
             count += 1
+        # skip the test files
+        if "tests" in str(filename):
+            continue
         name_count += [[str(filename), count]]
         total_count += count
         if len(str(filename)) > maxfilename:
@@ -139,8 +168,6 @@ def build(key):
                 "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-function", "-Wno-unused-variable",
                 "-I", "./src",
                 "-DDEBUG_INSTRUCTION_CYCLE",
-                # "-DDEBUG_PARSE_INSTRUCTION",
-                # "-DDEBUG_INSTRUCTION_CYCLE_INFO_REG_STACK",
                 "./src/common/convert.c",
                 "./src/common/cleanup.c",
                 "./src/algorithm/hashtable.c",
@@ -149,8 +176,25 @@ def build(key):
                 "./src/hardware/cpu/isa.c",
                 "./src/hardware/cpu/mmu.c",
                 "./src/hardware/memory/dram.c",
-                "-o", "./bin/isa"
+                "./src/tests/test_run_isa.c",
+                "-o", "./bin/run_isa"
             ]
+        ],
+        "inst": [
+            [
+                "/usr/bin/gcc",
+                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-function", "-Wno-unused-variable",
+                "-I", "./src",
+                "-DDEBUG_INSTRUCTION_CYCLE",
+                "./src/common/convert.c",
+                "./src/common/cleanup.c",
+                "./src/algorithm/hashtable.c",
+                "./src/algorithm/trie.c",
+                "./src/algorithm/array.c",
+                "./src/hardware/cpu/inst.c",
+                "./src/tests/test_inst.c",
+                "-o", "./bin/test_inst"
+            ],
         ],
         "elf": [
             [
@@ -162,7 +206,6 @@ def build(key):
                 "-DDEBUG_PARSE_ELF",
                 "-DDEBUG_LINK",
                 "./src/common/convert.c",
-                "./src/common/tagmalloc.c",
                 "./src/common/cleanup.c",
                 "./src/algorithm/array.c",
                 "./src/algorithm/hashtable.c",
@@ -191,7 +234,7 @@ def build(key):
                 "-o", "./bin/false_sharing"
             ],
         ],
-        "rb": [
+        "rbt": [
             [
                 "/usr/bin/gcc",
                 "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-but-set-variable", "-Wno-unused-variable",
@@ -200,8 +243,9 @@ def build(key):
                 "-DDEBUG_REDBLACK",
                 "./src/common/convert.c",
                 "./src/algorithm/bst.c",
-                "./src/algorithm/redblack.c",
-                "-o", "./bin/rb"
+                "./src/algorithm/rbt.c",
+                "./src/tests/test_rbt.c",
+                "-o", "./bin/rbt"
             ],
         ],
         "trie": [
@@ -212,6 +256,7 @@ def build(key):
                 "-I", "./src",
                 "-DDEBUG_TRIE",
                 "./src/algorithm/trie.c", "./src/algorithm/hashtable.c",
+                "./src/tests/test_trie.c",
                 "-o", "./bin/trie"
             ],
         ],
@@ -224,7 +269,46 @@ def build(key):
                 "-DDEBUG_BST",
                 "./src/algorithm/bst.c",
                 "./src/common/convert.c",
+                "./src/tests/test_bst.c",
                 "-o", "./bin/bst"
+            ],
+        ],
+        "malloc": [
+            [
+                "/usr/bin/gcc",
+                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-but-set-variable", "-Wno-unused-variable",
+                "-Wno-unused-function",
+                "-I", "./src",
+                "-DDEBUG_MALLOC",
+                # "-DIMPLICIT_FREE_LIST",
+                # "-DEXPLICIT_FREE_LIST",
+                "-DREDBLACK_TREE",
+                "./src/common/convert.c",
+                "./src/algorithm/linkedlist.c",
+                "./src/algorithm/bst.c",
+                "./src/algorithm/rbt.c",
+                "./src/malloc/block.c",
+                "./src/malloc/small_list.c",
+                "./src/malloc/implicit_list.c",
+                "./src/malloc/explicit_list.c",
+                "./src/malloc/segregated_list.c",
+                "./src/malloc/redblack_tree.c",
+                "./src/malloc/mem_alloc.c",
+                "./src/tests/test_malloc.c",
+                "-o", "./bin/malloc"
+            ],
+        ],
+        "convert": [
+            [
+                "/usr/bin/gcc",
+                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-but-set-variable", "-Wno-unused-variable",
+                "-Wno-unused-function",
+                "-I", "./src",
+                "-DDEBUG_BST",
+                "-DDEBUG_STRING2UINT",
+                "./src/common/convert.c",
+                "./src/tests/test_convert.c",
+                "-o", "./bin/convert"
             ],
         ],
     }
@@ -239,14 +323,17 @@ def build(key):
 def run(key):
     assert (os.path.isdir("./bin/"))
     bin_map = {
-        "isa": ["./bin/isa"],
+        "inst": ["./bin/test_inst"],
+        "isa": ["./bin/run_isa"],
         "elf": ["./bin/elf"],
         "link": ["./bin/link", "main", "sum", "-o", "output"],
         "mesi": ["./bin/mesi"],
         "false_sharing": ["./bin/false_sharing"],
-        "rb": ["./bin/rb"],
+        "rbt": ["./bin/rbt"],
         "trie": ["./bin/trie"],
         "bst": ["./bin/bst"],
+        "malloc": ["./bin/malloc"],
+        "convert": ["./bin/convert"],
     }
     if not key in bin_map:
         print("input the correct binary key:", bin_map.keys())
@@ -260,6 +347,11 @@ def debug(key):
     bin_map = {
         "isa": [gdb, "./bin/isa"],
         "link": [gdb, "--args", "./bin/link", "main", "sum", "-o", "output"],
+        "malloc": [gdb, "./bin/malloc"],
+        "bst": [gdb, "./bin/bst"],
+        "rbt": [gdb, "./bin/rbt"],
+        "trie": [gdb, "./bin/trie"],
+        "inst": [gdb, "./bin/test_inst"],
     }
     if not key in bin_map:
         print("input the correct binary key:", bin_map.keys())
@@ -276,15 +368,16 @@ def mem_check(key):
     if not key in bin_map:
         print("input the correct memory check key:", bin_map.keys())
         exit()
-    subprocess.run(["/usr/bin/valgrind",
-                    "--tool=memcheck",
-                    "--leak-check=full"] + bin_map[key])
+    subprocess.run([
+                       "/usr/bin/valgrind",
+                       "--tool=memcheck",
+                       "--leak-check=full"] + bin_map[key])
 
 
 def cache_verify():
     make_build_directory()
-    csim_ref_file = "/mnt/e/Ubuntu/cache/csim-ref"
-    trace_dir = "/mnt/e/Ubuntu/cache/traces/"
+    csim_ref_file = os.path.abspath("./files/cache/csim-ref")
+    trace_dir = os.path.abspath("./files/cache/traces/")
 
     assert (os.path.isfile(csim_ref_file))
     assert (os.path.isdir(trace_dir))
@@ -308,9 +401,9 @@ def cache_verify():
         # thus we start a new process
         a = [
             "/usr/bin/python3",
-            "./src/mains/cache_verify.py",
-            "/mnt/e/Ubuntu/cache/csim-ref",
-            "/mnt/e/Ubuntu/cache/traces/" + file,
+            "./src/tests/test_cache.py",
+            csim_ref_file,
+            trace_dir + '/' + file,
             str(s), str(E), str(b),
         ]
         print(" ".join(a))
@@ -345,6 +438,8 @@ if __name__ == '__main__':
         count_lines()
     elif operation == "clean":
         pass
+    elif operation == "copyright":
+        add_copyright_header()
     elif operation == "format":
         format_code()
     elif operation == "csim":

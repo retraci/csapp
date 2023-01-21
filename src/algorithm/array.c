@@ -16,7 +16,7 @@ void array_free(array_t *arr) {
     free(arr);
 }
 
-array_t* array_insert(array_t *arr, uint64_t value) {
+array_t *array_insert(array_t *arr, uint64_t value) {
     if (arr == NULL) {
         return NULL;
     }

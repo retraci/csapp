@@ -140,17 +140,17 @@ static uint64_t page_walk(uint64_t vaddr_value) {
     if (pgd[vaddr.vpn1].present == 1) {
         // PHYSICAL PAGE NUMBER of the next level page table
         // aka. high bits starting address of the page table
-        pte123_t *pud = (pte123_t *) pgd[vaddr.vpn1].paddr;
+        pte123_t *pud = (pte123_t *) (uint64_t) pgd[vaddr.vpn1].paddr;
 
         if (pud[vaddr.vpn2].present == 1) {
             // find pmd ppn
 
-            pte123_t *pmd = (pte123_t *) (pud[vaddr.vpn2].paddr);
+            pte123_t *pmd = (pte123_t *) (uint64_t) (pud[vaddr.vpn2].paddr);
 
             if (pmd[vaddr.vpn3].present == 1) {
                 // find pt ppn
 
-                pte4_t *pt = (pte4_t *) (pmd[vaddr.vpn3].paddr);
+                pte4_t *pt = (pte4_t *) (uint64_t) (pmd[vaddr.vpn3].paddr);
 
                 if (pt[vaddr.vpn4].present == 1) {
                     // find page table entry
@@ -231,6 +231,8 @@ static uint64_t page_walk(uint64_t vaddr_value) {
         // map the physical page and the virtual page
         exit(0);
     }
+
+    return -1;
 }
 
 static void page_fault_handler(pte4_t *pte, address_t vaddr) {

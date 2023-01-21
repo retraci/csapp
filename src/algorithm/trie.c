@@ -87,6 +87,29 @@ trie_node_t *trie_insert(trie_node_t *root, char *key, uint64_t value) {
     return root;
 }
 
+trie_node_t *trie_next(trie_node_t *current, char input) {
+    if (current == NULL) {
+        return NULL;
+    }
+
+    // go to next
+    if (current->next != NULL) {
+        char hashkey[2];
+        hashkey[0] = input;
+        hashkey[1] = '\0';
+
+        uint64_t trie_node_addr;
+        if (hashtable_get(current->next, hashkey, &trie_node_addr) == 1) {
+            // found next node
+            return (trie_node_t *) trie_node_addr;
+        }
+    }
+
+    // 1 - no mapping
+    // 2 - node does not exist in mapping
+    return NULL;
+}
+
 int trie_get(trie_node_t *root, char *key, uint64_t *valptr) {
     trie_node_t *p = root;
     for (int i = 0; i < strlen(key); i++) {
@@ -94,29 +117,10 @@ int trie_get(trie_node_t *root, char *key, uint64_t *valptr) {
             // not found
             return 0;
         }
-
-        // go to next
-        if (p->next != NULL) {
-            char hashkey[2];
-            hashkey[0] = key[i];
-            hashkey[1] = '\0';
-
-            uint64_t trie_node_addr;
-            if (hashtable_get(p->next, hashkey, &trie_node_addr) == 1) {
-                // found next node
-                p = (trie_node_t *) trie_node_addr;
-                continue;
-            } else {
-                // not found next node
-                return 0;
-            }
-        } else {
-            // should have mapping here 
-            return 0;
-        }
+        p = trie_next(p, key[i]);
     }
 
-    if (p->isvalue == 1) {
+    if (p != NULL && p->isvalue == 1) {
         *valptr = p->value;
         return 1;
     }
@@ -155,37 +159,6 @@ void trie_print(trie_node_t *root) {
     }
 
     trie_dfs_print(root, 0, 0);
-}
-
-static void test_insert() {
-    printf("Testing Trie ...\n");
-
-    trie_node_t *root = trie_construct();
-    uint64_t result;
-
-    root = trie_insert(root, "abcd", 12);
-    root = trie_insert(root, "ab", 108);
-    root = trie_insert(root, "abef", 1022);
-
-    assert(trie_get(root, "abcd", &result) == 1);
-    assert(result == 12);
-    assert(trie_get(root, "ab", &result) == 1);
-    assert(result == 108);
-    assert(trie_get(root, "abef", &result) == 1);
-    assert(result == 1022);
-
-    assert(trie_get(root, "a", &result) == 0);
-    assert(trie_get(root, "abc", &result) == 0);
-    assert(trie_get(root, "b", &result) == 0);
-    assert(trie_get(root, "x", &result) == 0);
-
-    trie_free(root);
-
-    printf("\033[32;1m\tPass\033[0m\n");
-}
-
-int main() {
-    test_insert();
 }
 
 #endif

@@ -9,21 +9,6 @@
 /*      instruction set architecture    */
 /*======================================*/
 
-// data structures
-typedef enum INST_OPERATOR {
-    INST_MOV,           // 0
-    INST_PUSH,          // 1
-    INST_POP,           // 2
-    INST_LEAVE,         // 3
-    INST_CALL,          // 4
-    INST_RET,           // 5
-    INST_ADD,           // 6
-    INST_SUB,           // 7
-    INST_CMP,           // 8
-    INST_JNE,           // 9
-    INST_JMP,           // 10
-} op_t;
-
 typedef enum OPERAND_TYPE {
     OD_EMPTY,                  // 0
     OD_IMM,                    // 1
@@ -46,6 +31,9 @@ typedef struct OPERAND_STRUCT {
     uint64_t reg1;   // main register
     uint64_t reg2;   // register 2
 } od_t;
+
+// handler table storing the handlers to different instruction types
+typedef void (*op_t)(od_t *, od_t *);
 
 // local variables are allocated in stack in run-time
 // we don't consider local STATIC variables

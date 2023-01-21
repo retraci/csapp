@@ -67,29 +67,29 @@ int check_state() {
 int read_cacheline(int i, int *read_value) {
     if (cache[i].state == MODIFIED) {
         // read hit
-        
+
 #ifdef DEBUG
         printf("[%d] read hit; dirty value %d\n", i, cache[i].value);
 #endif
-        
+
         *read_value = cache[i].value;
         return 1;
     } else if (cache[i].state == EXCLUSIVE) {
         // read hit
-        
+
 #ifdef DEBUG
         printf("[%d] read hit; exclusive clean value %d\n", i, cache[i].value);
 #endif
-        
+
         *read_value = cache[i].value;
         return 1;
     } else if (cache[i].state == SHARED) {
         // read hit
-        
+
 #ifdef DEBUG
         printf("[%d] read hit; shared clean value %d\n", i, cache[i].value);
 #endif
-        
+
         *read_value = cache[i].value;
         return 1;
     } else {
@@ -392,9 +392,7 @@ int main() {
             return 0;
         }
     }
-
     printf("pass\n");
 
     return 0;
-
 }
