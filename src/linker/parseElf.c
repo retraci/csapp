@@ -69,11 +69,13 @@ static int parse_table_entry(char *str, char ***ent) {
             col[col_width] = '\0';
 
             // update
-            arr[col_index++] = col;
+            arr[col_index] = col;
+            col_index++;
             col_width = 0;
         } else {
             assert(col_width < 32);
-            col_buf[col_width++] = str[i];
+            col_buf[col_width] = str[i];
+            col_width++;
         }
     }
     return count_col;
@@ -91,7 +93,7 @@ static void parse_sh(char *str, sh_entry_t *sh) {
     sh->sh_offset = string2uint(cols[2]);
     sh->sh_size = string2uint(cols[3]);
 
-    for (int i = 0; i < num_cols; ++i) {
+    for (int i = 0; i < num_cols; i++) {
         free(cols[i]);
     }
     free(cols);
@@ -128,7 +130,7 @@ static void parse_symtab(char *str, st_entry_t *ste) {
     ste->st_value = string2uint(cols[4]);
     ste->st_size = string2uint(cols[5]);
 
-    for (int i = 0; i < num_cols; ++i) {
+    for (int i = 0; i < num_cols; i++) {
         free(cols[i]);
     }
     free(cols);
@@ -158,7 +160,7 @@ static void parse_relocation(char *str, rl_entry_t *rte) {
     uint64_t bitmap = string2uint(cols[4]);
     rte->r_addend = *(int64_t *) &bitmap;
 
-    for (int i = 0; i < num_cols; ++i) {
+    for (int i = 0; i < num_cols; i++) {
         free(cols[i]);
     }
     free(cols);
@@ -229,10 +231,6 @@ static int read_elf(const char *filename, uint64_t bufaddr) {
     return line_counter;
 }
 
-static void free_link_constant_dict() {
-    hashtable_free(link_constant_dict);
-}
-
 static void init_dictionary() {
     if (link_constant_dict != NULL) {
         return;
@@ -243,13 +241,14 @@ static void init_dictionary() {
     link_constant_dict = hashtable_insert(link_constant_dict, "STB_LOCAL", STB_LOCAL);
     link_constant_dict = hashtable_insert(link_constant_dict, "STB_GLOBAL", STB_GLOBAL);
     link_constant_dict = hashtable_insert(link_constant_dict, "STB_WEAK", STB_WEAK);
+
     link_constant_dict = hashtable_insert(link_constant_dict, "STT_NOTYPE", STT_NOTYPE);
     link_constant_dict = hashtable_insert(link_constant_dict, "STT_OBJECT", STT_OBJECT);
     link_constant_dict = hashtable_insert(link_constant_dict, "STT_FUNC", STT_FUNC);
+
     link_constant_dict = hashtable_insert(link_constant_dict, "R_X86_64_32", R_X86_64_32);
     link_constant_dict = hashtable_insert(link_constant_dict, "R_X86_64_PC32", R_X86_64_PC32);
     link_constant_dict = hashtable_insert(link_constant_dict, "R_X86_64_PLT32", R_X86_64_PLT32);
-    add_cleanup_event(free_link_constant_dict);
 }
 
 void parse_elf(char *filename, elf_t *elf) {
@@ -293,8 +292,11 @@ void parse_elf(char *filename, elf_t *elf) {
     elf->symt_count = symt_sh->sh_size;
     elf->symt = malloc(elf->symt_count * sizeof(st_entry_t));
     memset(elf->symt, 0, elf->symt_count * sizeof(st_entry_t));
+
     for (int i = 0; i < symt_sh->sh_size; i++) {
-        parse_symtab(elf->buffer[i + symt_sh->sh_offset], &(elf->symt[i]));
+        parse_symtab(
+                elf->buffer[i + symt_sh->sh_offset],
+                &(elf->symt[i]));
 #ifdef DEBUG_LINK
         print_symtab_entry(&(elf->symt[i]));
 #endif
@@ -307,7 +309,10 @@ void parse_elf(char *filename, elf_t *elf) {
         memset(elf->reltext, 0, elf->reltext_count * sizeof(rl_entry_t));
 
         for (int i = 0; i < rtext_sh->sh_size; i++) {
-            parse_relocation(elf->buffer[i + rtext_sh->sh_offset], &(elf->reltext[i]));
+            parse_relocation(
+                    elf->buffer[i + rtext_sh->sh_offset],
+                    &(elf->reltext[i])
+            );
             int st = elf->reltext[i].sym;
             assert(0 <= st && st < elf->symt_count);
 
@@ -327,7 +332,10 @@ void parse_elf(char *filename, elf_t *elf) {
         memset(elf->reldata, 0, elf->reldata_count * sizeof(rl_entry_t));
 
         for (int i = 0; i < rdata_sh->sh_size; i++) {
-            parse_relocation(elf->buffer[i + rdata_sh->sh_offset], &(elf->reldata[i]));
+            parse_relocation(
+                    elf->buffer[i + rdata_sh->sh_offset],
+                    &(elf->reldata[i])
+            );
             int st = elf->reldata[i].sym;
             assert(0 <= st && st < elf->symt_count);
 
@@ -368,12 +376,15 @@ void free_elf(elf_t *elf) {
     if (elf->sht != NULL) {
         free(elf->sht);
     }
+
     if (elf->symt != NULL) {
         free(elf->symt);
     }
+
     if (elf->reltext != NULL) {
         free(elf->reltext);
     }
+
     if (elf->reldata != NULL) {
         free(elf->reldata);
     }
@@ -382,7 +393,6 @@ void free_elf(elf_t *elf) {
 }
 
 #ifdef DEBUG_PARSE_ELF
-
 int main() {
     printf("Testing parsing ELF file ...\n");
 
@@ -455,8 +465,6 @@ int main() {
     assert(elf_file->reltext[1].r_addend == -4);
 
     free_elf(elf_file);
-
-    finally_cleanup();
 
     printf("\tPass\n.");
 }

@@ -17,6 +17,7 @@ add_executable(csapp
         src/common/convert.c
 
         src/hardware/cpu/inst.c
+        src/hardware/cpu/interrupt.c
         src/hardware/cpu/isa.c
         src/hardware/cpu/mmu.c
         src/hardware/cpu/sram.c
@@ -29,8 +30,10 @@ add_executable(csapp
         src/headers/common.h
         src/headers/cpu.h
         src/headers/instruction.h
+        src/headers/interrupt.h
         src/headers/linker.h
         src/headers/memory.h
+        src/headers/process.h
 
         src/linker/parseElf.c
         src/linker/staticlink.c
@@ -46,10 +49,17 @@ add_executable(csapp
         src/malloc/segregated_list.c
         src/malloc/small_list.c
 
+        src/process/pagefault.c
+        src/process/process.c
+        src/process/schedule.c
+        src/process/syscall.c
+
         src/tests/test_bst.c
+        src/tests/test_context.c
         src/tests/test_convert.c
         src/tests/test_inst.c
         src/tests/test_malloc.c
+        src/tests/test_pagefault.c
         src/tests/test_rbt.c
         src/tests/test_run_isa.c
         src/tests/test_trie.c

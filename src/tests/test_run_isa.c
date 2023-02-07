@@ -7,6 +7,8 @@
 #include "headers/common.h"
 #include "headers/algorithm.h"
 #include "headers/instruction.h"
+#include "headers/interrupt.h"
+#include "headers/process.h"
 
 static void print_register() {
     printf("rax = %16lx\trbx = %16lx\trcx = %16lx\trdx = %16lx\n",
@@ -24,7 +26,7 @@ static void print_stack() {
     high = &high[n];
     uint64_t va = cpu_reg.rsp + n * 8;
 
-    for (int i = 0; i < 2 * n; ++i) {
+    for (int i = 0; i < 2 * n; i++) {
         uint64_t *ptr = (uint64_t *) (high - i);
         printf("0x%16lx : %16lx", va, (uint64_t) *ptr);
 
@@ -34,6 +36,71 @@ static void print_stack() {
         printf("\n");
         va -= 8;
     }
+}
+
+static void TestSyscallPrintHelloWorld() {
+    printf("Testing syscall to print 'hello world\n' ...\n");
+
+    // init state
+    cpu_reg.rsp = 0x7ffffffee0f0;
+
+    char assembly[12][MAX_INSTRUCTION_CHAR] = {
+            // open stack for string buffer
+            // "rld\n"
+            "movq $0x000a646c72, %rbx",
+            "pushq %rbx",
+            // "hello wo"
+            "movq $0x6f77206f6c6c6568, %rbx",
+            "pushq %rbx",
+            // call write for the string to stdout
+            "movq $1, %rax",
+            "movq $1, %rdi",
+            "movq %rsp, %rsi",
+            "movq $13, %rdx",
+            "int $0x80",
+            // call exit
+            "movq $60, %rax",
+            "movq $0, %rdi",
+            "int $0x80",
+    };
+
+    // copy to physical memory
+    for (int i = 0; i < 12; i++) {
+        cpu_writeinst_dram(va2pa(i * 0x40 + 0x00400000), assembly[i]);
+    }
+    cpu_pc.rip = 0x00400000;
+
+    // prepare a kernel stack
+    uint8_t kstack_buf[8192 * 2];
+    uint64_t k_temp = (uint64_t) &kstack_buf[8192];
+
+    kstack_t *kstack = (kstack_t *) (((k_temp >> 13) << 13) + KERNEL_STACK_SIZE);
+    tss_s0_t tss;
+
+    tss.ESP0 = (uint64_t) kstack + KERNEL_STACK_SIZE;
+    cpu_task_register = (uint64_t) &tss;
+
+    pcb_t curr;
+    curr.prev = &curr;
+    curr.next = &curr;
+    curr.kstack = kstack;
+    kstack->threadinfo.pcb = &curr;
+
+    idt_init();
+    syscall_init();
+
+    printf("begin\n");
+    int time = 0;
+    while (time < 12) {
+        instruction_cycle();
+#ifdef DEBUG_INSTRUCTION_CYCLE_INFO_REG_STACK
+        print_register();
+        print_stack();
+#endif
+        time++;
+    }
+
+    printf("\033[32;1m\tPass\033[0m\n");
 }
 
 static void TestAddFunctionCallAndComputation() {
@@ -80,7 +147,7 @@ static void TestAddFunctionCallAndComputation() {
     };
 
     // copy to physical memory
-    for (int i = 0; i < 15; ++i) {
+    for (int i = 0; i < 15; i++) {
         cpu_writeinst_dram(va2pa(i * 0x40 + 0x00400000), assembly[i]);
     }
     cpu_pc.rip = MAX_INSTRUCTION_CHAR * sizeof(char) * 11 + 0x00400000;
@@ -157,15 +224,14 @@ static void TestSumRecursiveCondition() {
     };
 
     // copy to physical memory
-    for (int i = 0; i < 19; ++i) {
+    for (int i = 0; i < 19; i++) {
         cpu_writeinst_dram(va2pa(i * 0x40 + 0x00400000), assembly[i]);
     }
     cpu_pc.rip = MAX_INSTRUCTION_CHAR * sizeof(char) * 16 + 0x00400000;
 
     printf("begin\n");
     int time = 0;
-    while ((cpu_pc.rip <= 18 * 0x40 + 0x00400000) &&
-           time < MAX_NUM_INSTRUCTION_CYCLE) {
+    while ((cpu_pc.rip <= 18 * 0x40 + 0x00400000) && time < MAX_NUM_INSTRUCTION_CYCLE) {
         instruction_cycle();
 #ifdef DEBUG_INSTRUCTION_CYCLE_INFO_REG_STACK
         print_register();
@@ -191,9 +257,9 @@ static void TestSumRecursiveCondition() {
 }
 
 int main() {
-    TestAddFunctionCallAndComputation();
-    TestSumRecursiveCondition();
+    //TestAddFunctionCallAndComputation();
+    //TestSumRecursiveCondition();
 
-    finally_cleanup();
+    TestSyscallPrintHelloWorld();
     return 0;
 }

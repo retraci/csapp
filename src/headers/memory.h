@@ -14,10 +14,10 @@
 // then the physical space is (1 << 16) = 65536
 // total 16 physical memory
 #define PHYSICAL_MEMORY_SPACE   (65536)
-#define MAX_INDEX_PHYSICAL_PAGE (15)
 #define MAX_NUM_PHYSICAL_PAGE (16)    // 1 + MAX_INDEX_PHYSICAL_PAGE
 
 #define PAGE_TABLE_ENTRY_NUM    (512)
+#define PAGE_SIZE    (4096)
 
 // physical memory
 // 16 physical memory pages
@@ -43,18 +43,18 @@ typedef union {
         uint64_t unused9_11: 3;
         /*
         uint64_t paddr              : 40;
-        uint64_t unused52_62        : 11;
+        uint64_t unused52_62        : 10;
 
         for malloc, a virtual address on heap is 48 bits
         for real world, a physical page number is 40 bits
         */
-        uint64_t paddr: 51;   // virtual address (48 bits) on simulator's heap
+        uint64_t paddr: 50;   // virtual address (48 bits) on simulator's heap
         uint64_t xdisabled: 1;
     };
 
     struct {
         uint64_t _present: 1;
-        uint64_t daddr: 63;   // disk address
+        uint64_t saddr: 63;   // swap space address
     };
 } pte123_t; // PGD, PUD, PMD
 
@@ -74,33 +74,15 @@ typedef union {
         uint64_t global: 1;
         uint64_t unused9_11: 3;
         uint64_t ppn: 40;
-        uint64_t unused52_62: 11;
+        uint64_t unused52_62: 10;
         uint64_t xdisabled: 1;
     };
 
     struct {
         uint64_t _present: 1;    // present = 0
-        uint64_t daddr: 63;   // disk address
+        uint64_t saddr: 63;   // swap space address
     };
 } pte4_t;   // PT
-
-// physical page descriptor
-typedef struct {
-    int allocated;
-    int dirty;
-    int time;   // LRU cache
-
-    // real world: mapping to anon_vma or address_space
-    // we simply the situation here
-    // TODO: if multiple processes are using this page? E.g. Shared library
-    pte4_t *pte4;       // the reversed mapping: from PPN to page table entry
-    uint64_t daddr;   // binding the revesed mapping with mapping to disk
-} pd_t;
-
-// for each pagable (swappable) physical page
-// create one reversed mapping
-pd_t page_map[MAX_NUM_PHYSICAL_PAGE];
-
 
 /*======================================*/
 /*      memory R/W                      */

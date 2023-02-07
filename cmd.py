@@ -11,6 +11,8 @@ from pathlib import Path
 def make_build_directory():
     if not os.path.isdir("./bin/"):
         os.mkdir("./bin/")
+    if not os.path.isdir("./files/swap/"):
+        os.mkdir("./files/swap/")
 
 
 def add_copyright_header():
@@ -169,7 +171,6 @@ def build(key):
                 "-I", "./src",
                 "-DDEBUG_INSTRUCTION_CYCLE",
                 "./src/common/convert.c",
-                "./src/common/cleanup.c",
                 "./src/algorithm/hashtable.c",
                 "./src/algorithm/trie.c",
                 "./src/algorithm/array.c",
@@ -180,6 +181,88 @@ def build(key):
                 "-o", "./bin/run_isa"
             ]
         ],
+        "int": [
+            [
+                "/usr/bin/gcc",
+                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-but-set-variable", "-Wno-unused-variable",
+                "-Wno-unused-function",
+                "-I", "./src",
+                "-DDEBUG_INSTRUCTION_CYCLE",
+                # "-DUSE_SRAM_CACHE",
+                "-DUSE_NAVIE_VA2PA",
+                "./src/common/convert.c",
+                "./src/algorithm/hashtable.c",
+                "./src/algorithm/trie.c",
+                "./src/algorithm/array.c",
+                "./src/hardware/cpu/isa.c",
+                "./src/hardware/cpu/mmu.c",
+                "./src/hardware/cpu/inst.c",
+                # "./src/hardware/cpu/sram.c",
+                "./src/hardware/cpu/interrupt.c",
+                "./src/hardware/memory/dram.c",
+                # "./src/hardware/memory/swap.c",
+                "./src/process/syscall.c",
+                "./src/process/schedule.c",
+                "./src/tests/test_run_isa.c",
+                "-o", "./bin/run_isa"
+            ]
+        ],
+        "ctx": [
+            [
+                "/usr/bin/gcc",
+                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-but-set-variable", "-Wno-unused-variable",
+                "-Wno-unused-function",
+                "-I", "./src",
+                "-DDEBUG_INSTRUCTION_CYCLE",
+                # "-DUSE_SRAM_CACHE",
+                # "-DUSE_NAVIE_VA2PA",
+                "-DUSE_PAGETABLE_VA2PA",
+                "./src/common/convert.c",
+                "./src/algorithm/hashtable.c",
+                "./src/algorithm/trie.c",
+                "./src/algorithm/array.c",
+                "./src/hardware/cpu/isa.c",
+                "./src/hardware/cpu/mmu.c",
+                "./src/hardware/cpu/inst.c",
+                # "./src/hardware/cpu/sram.c",
+                "./src/hardware/cpu/interrupt.c",
+                "./src/hardware/memory/dram.c",
+                "./src/hardware/memory/swap.c",
+                "./src/process/syscall.c",
+                "./src/process/schedule.c",
+                "./src/process/pagefault.c",
+                "./src/tests/test_context.c",
+                "-o", "./bin/ctx"
+            ]
+        ],
+        "pgf": [
+            [
+                "/usr/bin/gcc",
+                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-but-set-variable", "-Wno-unused-variable",
+                "-Wno-unused-function",
+                "-I", "./src",
+                "-DDEBUG_INSTRUCTION_CYCLE",
+                # "-DUSE_SRAM_CACHE",
+                # "-DUSE_NAVIE_VA2PA",
+                "-DUSE_PAGETABLE_VA2PA",
+                "./src/common/convert.c",
+                "./src/algorithm/hashtable.c",
+                "./src/algorithm/trie.c",
+                "./src/algorithm/array.c",
+                "./src/hardware/cpu/isa.c",
+                "./src/hardware/cpu/mmu.c",
+                "./src/hardware/cpu/inst.c",
+                # "./src/hardware/cpu/sram.c",
+                "./src/hardware/cpu/interrupt.c",
+                "./src/hardware/memory/dram.c",
+                "./src/hardware/memory/swap.c",
+                "./src/process/syscall.c",
+                "./src/process/schedule.c",
+                "./src/process/pagefault.c",
+                "./src/tests/test_pagefault.c",
+                "-o", "./bin/pgf"
+            ]
+        ],
         "inst": [
             [
                 "/usr/bin/gcc",
@@ -187,13 +270,39 @@ def build(key):
                 "-I", "./src",
                 "-DDEBUG_INSTRUCTION_CYCLE",
                 "./src/common/convert.c",
-                "./src/common/cleanup.c",
                 "./src/algorithm/hashtable.c",
                 "./src/algorithm/trie.c",
                 "./src/algorithm/array.c",
                 "./src/hardware/cpu/inst.c",
                 "./src/tests/test_inst.c",
                 "-o", "./bin/test_inst"
+            ],
+        ],
+        "link": [
+            [
+                "/usr/bin/gcc",
+                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-function",
+                "-I", "./src",
+                "-shared", "-fPIC",
+                "./src/common/convert.c",
+                "./src/algorithm/array.c",
+                "./src/algorithm/hashtable.c",
+                "./src/algorithm/linkedlist.c",
+                "./src/linker/parseElf.c",
+                "./src/linker/staticlink.c",
+                "-o", "./bin/staticLinker.so"
+            ],
+            [
+                "/usr/bin/gcc",
+                "-Wall", "-g", "-O0", "-Werror", "-std=gnu99", "-Wno-unused-function",
+                "-I", "./src",
+                # "-DDEBUG_LINK",
+                "./src/common/convert.c",
+                "./src/algorithm/array.c",
+                "./src/algorithm/hashtable.c",
+                "./src/algorithm/linkedlist.c",
+                "./src/linker/linker.c",
+                "-ldl", "-o", "./bin/link"
             ],
         ],
         "elf": [
@@ -206,7 +315,6 @@ def build(key):
                 "-DDEBUG_PARSE_ELF",
                 "-DDEBUG_LINK",
                 "./src/common/convert.c",
-                "./src/common/cleanup.c",
                 "./src/algorithm/array.c",
                 "./src/algorithm/hashtable.c",
                 "./src/algorithm/linkedlist.c",
@@ -325,6 +433,7 @@ def run(key):
     bin_map = {
         "inst": ["./bin/test_inst"],
         "isa": ["./bin/run_isa"],
+        "int": ["./bin/run_isa"],
         "elf": ["./bin/elf"],
         "link": ["./bin/link", "main", "sum", "-o", "output"],
         "mesi": ["./bin/mesi"],
@@ -334,6 +443,8 @@ def run(key):
         "bst": ["./bin/bst"],
         "malloc": ["./bin/malloc"],
         "convert": ["./bin/convert"],
+        "ctx": ["./bin/ctx"],
+        "pgf": ["./bin/pgf"],
     }
     if not key in bin_map:
         print("input the correct binary key:", bin_map.keys())
@@ -345,13 +456,16 @@ def debug(key):
     assert (os.path.isdir("./bin/"))
     gdb = "/usr/bin/gdb"
     bin_map = {
-        "isa": [gdb, "./bin/isa"],
+        "isa": [gdb, "./bin/run_isa"],
+        "int": [gdb, "./bin/run_isa"],
         "link": [gdb, "--args", "./bin/link", "main", "sum", "-o", "output"],
         "malloc": [gdb, "./bin/malloc"],
         "bst": [gdb, "./bin/bst"],
         "rbt": [gdb, "./bin/rbt"],
         "trie": [gdb, "./bin/trie"],
         "inst": [gdb, "./bin/test_inst"],
+        "ctx": [gdb, "./bin/ctx"],
+        "pgf": [gdb, "./bin/pgf"],
     }
     if not key in bin_map:
         print("input the correct binary key:", bin_map.keys())
@@ -417,8 +531,6 @@ if __name__ == '__main__':
         print("[", i, "] ", argv)
         i += 1
     print("================")
-
-    # main
     assert (len(sys.argv) >= 2)
     operation = sys.argv[1].lower()
 

@@ -243,7 +243,6 @@ static void TestParsingInstruction() {
                     .op = &call_handler,
                     .src = {
                             .type = OD_MEM,
-                            .value = 0,
                             .value = 0
                     },
                     .dst = {
@@ -277,8 +276,5 @@ static void TestParsingInstruction() {
 
 int main() {
     TestParsingInstruction();
-
-    finally_cleanup();
-
     return 0;
 }

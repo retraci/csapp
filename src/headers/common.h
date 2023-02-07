@@ -16,9 +16,6 @@
 // do page walk
 #define DEBUG_ENABLE_PAGE_WALK      (0)
 
-// use sram cache for memory access
-#define DEBUG_ENABLE_SRAM_CACHE     (0)
-
 // type converter
 // uint32 to its equivalent float with rounding
 uint32_t uint2float(uint32_t u);
@@ -42,12 +39,6 @@ uint64_t string2uint_range(const char *str, int start, int end);
 
 // commonly shared variables
 #define MAX_INSTRUCTION_CHAR (64)
-
-/*======================================*/
-/*      clean up events                 */
-/*======================================*/
-void add_cleanup_event(void *func);
-void finally_cleanup();
 
 /*======================================*/
 /*      wrap of the memory              */

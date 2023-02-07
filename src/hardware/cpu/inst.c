@@ -25,6 +25,7 @@ extern void cmp_handler(od_t *src_od, od_t *dst_od);
 extern void jne_handler(od_t *src_od, od_t *dst_od);
 extern void jmp_handler(od_t *src_od, od_t *dst_od);
 extern void lea_handler(od_t *src_od, od_t *dst_od);
+extern void int_handler(od_t *src_od, od_t *dst_od);
 
 static trie_node_t *register_mapping = NULL;
 static trie_node_t *operator_mapping = NULL;
@@ -112,6 +113,7 @@ static void lazy_initialize_trie() {
         operator_mapping = trie_insert(operator_mapping, "movq", (uint64_t) &mov_handler);
         operator_mapping = trie_insert(operator_mapping, "mov", (uint64_t) &mov_handler);
         operator_mapping = trie_insert(operator_mapping, "push", (uint64_t) &push_handler);
+        operator_mapping = trie_insert(operator_mapping, "pushq", (uint64_t) &push_handler);
         operator_mapping = trie_insert(operator_mapping, "pop", (uint64_t) &pop_handler);
         operator_mapping = trie_insert(operator_mapping, "leaveq", (uint64_t) &leave_handler);
         operator_mapping = trie_insert(operator_mapping, "callq", (uint64_t) &call_handler);
@@ -122,6 +124,7 @@ static void lazy_initialize_trie() {
         operator_mapping = trie_insert(operator_mapping, "jne", (uint64_t) &jne_handler);
         operator_mapping = trie_insert(operator_mapping, "jmp", (uint64_t) &jmp_handler);
         operator_mapping = trie_insert(operator_mapping, "lea", (uint64_t) &lea_handler);
+        operator_mapping = trie_insert(operator_mapping, "int", (uint64_t) &int_handler);
     }
 }
 
@@ -583,10 +586,9 @@ static inst_parser_t *parse_effective_address_next(inst_parser_t *p, char c) {
 void parse_instruction(char *inst_str, inst_t *inst) {
     lazy_initialize_trie();
 
-    inst_parser_t parser =
-            {
-                    .inst = inst
-            };
+    inst_parser_t parser = {
+            .inst = inst
+    };
     inst_parser_t *p = &parser;
 
     for (int i = 0; i < strlen(inst_str); i++) {
