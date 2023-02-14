@@ -6,6 +6,8 @@
 #include "headers/cpu.h"
 #include "headers/memory.h"
 #include "headers/interrupt.h"
+#include "headers/syscall.h"
+#include "headers/color.h"
 
 typedef void (*syscall_handler_t)();
 
@@ -57,13 +59,19 @@ static void write_handler() {
     // TODO: this works only with NAVIE VA2PA
     for (int i = 0; i < buf_length; ++i) {
         // print as yellow
-        printf("\033[33;1m%c\033[0m", pm[va2pa(buf_vaddr + i)]);
+        printf(YELLOWSTR("%c"), pm[va2pa(buf_vaddr + i, 0)]);
     }
 }
 
 static void getpid_handler() {}
 
-static void fork_handler() {}
+static void fork_handler() {
+    uint64_t kernel_rsp = cpu_reg.rsp;
+    destory_user_registers();
+    cpu_reg.rsp = kernel_rsp;
+
+    syscall_fork();
+}
 
 static void execve_handler() {}
 
@@ -73,7 +81,7 @@ static void exit_handler() {
     // assembly end
 
     // The following resource are allocated on KERNEL STACK
-    printf("\033[33;1mGood Bye ~~~\n\033[0m");
+    printf(REDSTR("Good Bye ~~~\n"));
 }
 
 static void wait_handler() {}

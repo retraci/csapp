@@ -120,7 +120,8 @@ typedef struct {
 #define ILLIST_PREV (1 << 4)
 #define ILLIST_NEXT (1 << 5)
 #define ILLIST_VALUE (1 << 6)
-void linkedlist_validate_interface(linkedlist_node_interface *i_node, uint64_t flags);
+void linkedlist_validate_interface(linkedlist_node_interface *i_node,
+                                   uint64_t flags);
 
 // internal class of the linked list
 typedef struct LINKEDLIST_INTERNAL_STRUCT {
@@ -135,11 +136,28 @@ typedef struct LINKEDLIST_INTERNAL_STRUCT {
 
 // The linked list implementation open to other data structures
 // especially useful for malloc explicit list implementation
-int linkedlist_internal_add(linkedlist_internal_t *list, linkedlist_node_interface *i_node, uint64_t value);
-int linkedlist_internal_insert(linkedlist_internal_t *list, linkedlist_node_interface *i_node, uint64_t node);
-int linkedlist_internal_delete(linkedlist_internal_t *list, linkedlist_node_interface *i_node, uint64_t node);
-uint64_t linkedlist_internal_index(linkedlist_internal_t *list, linkedlist_node_interface *i_node, uint64_t index);
-uint64_t linkedlist_internal_next(linkedlist_internal_t *list, linkedlist_node_interface *i_node);
+int linkedlist_internal_add(linkedlist_internal_t *list,
+                            linkedlist_node_interface *i_node,
+                            uint64_t value);
+int linkedlist_internal_insert(linkedlist_internal_t *list,
+                               linkedlist_node_interface *i_node,
+                               uint64_t node);
+int linkedlist_internal_delete(linkedlist_internal_t *list,
+                               linkedlist_node_interface *i_node,
+                               uint64_t node);
+uint64_t linkedlist_internal_index(linkedlist_internal_t *list,
+                                   linkedlist_node_interface *i_node,
+                                   uint64_t index);
+uint64_t linkedlist_internal_next(linkedlist_internal_t *list,
+                                  linkedlist_node_interface *i_node);
+int linkedlist_internal_insert_after(linkedlist_internal_t *list,
+                                     linkedlist_node_interface *i_node,
+                                     uint64_t prev,
+                                     uint64_t node);
+int linkedlist_internal_insert_before(linkedlist_internal_t *list,
+                                      linkedlist_node_interface *i_node,
+                                      uint64_t next,
+                                      uint64_t node);
 
 //
 //  The implementation of the default linked list
@@ -249,7 +267,8 @@ typedef struct {
 #define IRBT_COLOR (1 << 7)
 #define IRBT_KEY (1 << 8)
 #define IRBT_VALUE (1 << 9)
-void rbt_validate_interface(rbtree_node_interface *i_node, uint64_t flags);
+void rbt_validate_interface(rbtree_node_interface *i_node,
+                            uint64_t flags);
 
 // internal class of the red-black tree
 typedef struct RBTREE_INTERNAL_STRUCT {
@@ -271,8 +290,12 @@ typedef enum {
 // The red-black tree implementation open to other data structures
 // especially useful for malloc explicit list implementation
 // and vm_area_struct
-void rbt_internal_insert(rbtree_internal_t *tree, rbtree_node_interface *i_node, uint64_t node_id);
-void rbt_internal_delete(rbtree_internal_t *tree, rbtree_node_interface *i_node, uint64_t node_id);
+void rbt_internal_insert(rbtree_internal_t *tree,
+                         rbtree_node_interface *i_node,
+                         uint64_t node_id);
+void rbt_internal_delete(rbtree_internal_t *tree,
+                         rbtree_node_interface *i_node,
+                         uint64_t node_id);
 
 //
 //  The default implementation of red-black tree
@@ -321,11 +344,19 @@ rb_node_t *rbt_find_succ(rb_tree_t *tree, uint64_t key);
 /*======================================*/
 /*      Binary Search Tree              */
 /*======================================*/
-void bst_internal_insert(rbtree_internal_t *tree, rbtree_node_interface *i_node, uint64_t node_id);
-void bst_internal_delete(rbtree_internal_t *tree, rbtree_node_interface *i_node, uint64_t node_id,
-                         int is_rbt, uint64_t *db_parent);
-uint64_t bst_internal_find(rbtree_internal_t *tree, rbtree_node_interface *i_node, uint64_t key);
-uint64_t bst_internal_find_succ(rbtree_internal_t *tree, rbtree_node_interface *i_node, uint64_t key);
+void bst_internal_insert(rbtree_internal_t *tree,
+                         rbtree_node_interface *i_node,
+                         uint64_t node_id);
+void bst_internal_delete(rbtree_internal_t *tree,
+                         rbtree_node_interface *i_node,
+                         uint64_t node_id, int is_rbt,
+                         uint64_t *db_parent);
+uint64_t bst_internal_find(rbtree_internal_t *tree,
+                           rbtree_node_interface *i_node,
+                           uint64_t key);
+uint64_t bst_internal_find_succ(rbtree_internal_t *tree,
+                                rbtree_node_interface *i_node,
+                                uint64_t key);
 
 rb_tree_t *bst_construct();
 void bst_free(rb_tree_t *tree);

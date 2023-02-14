@@ -46,30 +46,30 @@ void mov_handler(od_t *src_od, od_t *dst_od) {
     if (src_od->type == OD_REG && dst_od->type == OD_REG) {
         // src: register
         // dst: register
-        *(uint64_t *) (dst_od->value) = *(uint64_t *) (src_od->value);
+        DEREF_VALUE(dst_od) = DEREF_VALUE(src_od);
         increase_pc();
         cpu_flags.__flags_value = 0;
         return;
     } else if (src_od->type == OD_REG && dst_od->type == OD_MEM) {
         // src: register
         // dst: virtual address
-        uint64_t dst_pa = va2pa(dst_od->value);
-        cpu_write64bits_dram(dst_pa, *(uint64_t *) (src_od->value));
+        virtual_write_data(
+                dst_od->value,
+                DEREF_VALUE(src_od));
         increase_pc();
         cpu_flags.__flags_value = 0;
         return;
     } else if (src_od->type == OD_MEM && dst_od->type == OD_REG) {
         // src: virtual address
         // dst: register
-        uint64_t src_pa = va2pa(src_od->value);
-        *(uint64_t *) (dst_od->value) = cpu_read64bits_dram(src_pa);
+        DEREF_VALUE(dst_od) = virtual_read_data(src_od->value);
         increase_pc();
         cpu_flags.__flags_value = 0;
         return;
     } else if (src_od->type == OD_IMM && dst_od->type == OD_REG) {
         // src: immediate number (uint64_t bit map)
         // dst: register
-        *(uint64_t *) (dst_od->value) = (src_od->value);
+        DEREF_VALUE(dst_od) = (src_od->value);
         increase_pc();
         cpu_flags.__flags_value = 0;
         return;
@@ -81,10 +81,9 @@ void push_handler(od_t *src_od, od_t *dst_od) {
         // src: register
         // dst: empty
         cpu_reg.rsp = cpu_reg.rsp - 8;
-        uint64_t rsp_pa = va2pa(cpu_reg.rsp);
-        cpu_write64bits_dram(
-                rsp_pa,
-                *(uint64_t *) (src_od->value));
+        virtual_write_data(
+                cpu_reg.rsp,
+                DEREF_VALUE(src_od));
         increase_pc();
         cpu_flags.__flags_value = 0;
         return;
@@ -95,10 +94,9 @@ void pop_handler(od_t *src_od, od_t *dst_od) {
     if (src_od->type == OD_REG) {
         // src: register
         // dst: empty
-        uint64_t rsp_pa = va2pa(cpu_reg.rsp);
-        uint64_t old_val = cpu_read64bits_dram(rsp_pa);
+        uint64_t old_val = virtual_read_data(cpu_reg.rsp);
         cpu_reg.rsp = cpu_reg.rsp + 8;
-        *(uint64_t *) (src_od->value) = old_val;
+        DEREF_VALUE(src_od) = old_val;
         increase_pc();
         cpu_flags.__flags_value = 0;
         return;
@@ -110,8 +108,7 @@ void leave_handler(od_t *src_od, od_t *dst_od) {
     cpu_reg.rsp = cpu_reg.rbp;
 
     // popq %rbp
-    uint64_t rsp_pa = va2pa(cpu_reg.rsp);
-    uint64_t old_val = cpu_read64bits_dram(rsp_pa);
+    uint64_t old_val = virtual_read_data(cpu_reg.rsp);
     cpu_reg.rsp = cpu_reg.rsp + 8;
     cpu_reg.rbp = old_val;
     increase_pc();
@@ -123,9 +120,8 @@ void call_handler(od_t *src_od, od_t *dst_od) {
     // dst: empty
     // push the return value
     cpu_reg.rsp = cpu_reg.rsp - 8;
-    uint64_t rsp_pa = va2pa(cpu_reg.rsp);
-    cpu_write64bits_dram(
-            rsp_pa,
+    virtual_write_data(
+            cpu_reg.rsp,
             cpu_pc.rip + sizeof(char) * MAX_INSTRUCTION_CHAR);
     // jump to target function address
     // TODO: support PC relative addressing
@@ -137,8 +133,7 @@ void ret_handler(od_t *src_od, od_t *dst_od) {
     // src: empty
     // dst: empty
     // pop rsp
-    uint64_t rsp_pa = va2pa(cpu_reg.rsp);
-    uint64_t ret_addr = cpu_read64bits_dram(rsp_pa);
+    uint64_t ret_addr = virtual_read_data(cpu_reg.rsp);
     cpu_reg.rsp = cpu_reg.rsp + 8;
     // jump to return address
     cpu_pc.rip = ret_addr;
@@ -149,20 +144,20 @@ void add_handler(od_t *src_od, od_t *dst_od) {
     if (src_od->type == OD_REG && dst_od->type == OD_REG) {
         // src: register (value: int64_t bit map)
         // dst: register (value: int64_t bit map)
-        uint64_t val = *(uint64_t *) (dst_od->value) + *(uint64_t *) (src_od->value);
+        uint64_t val = DEREF_VALUE(dst_od) + DEREF_VALUE(src_od);
 
         int val_sign = ((val >> 63) & 0x1);
-        int src_sign = ((*(uint64_t *) (src_od->value) >> 63) & 0x1);
-        int dst_sign = ((*(uint64_t *) (dst_od->value) >> 63) & 0x1);
+        int src_sign = ((DEREF_VALUE(src_od) >> 63) & 0x1);
+        int dst_sign = ((DEREF_VALUE(dst_od) >> 63) & 0x1);
 
         // set condition flags
-        cpu_flags.CF = (val < *(uint64_t *) (src_od->value)); // unsigned
+        cpu_flags.CF = (val < DEREF_VALUE(src_od)); // unsigned
         cpu_flags.ZF = (val == 0);
         cpu_flags.SF = val_sign;
         cpu_flags.OF = (src_sign == 0 && dst_sign == 0 && val_sign == 1) || (src_sign == 1 && dst_sign == 1 && val_sign == 0);
 
         // update registers
-        *(uint64_t *) (dst_od->value) = val;
+        DEREF_VALUE(dst_od) = val;
         // signed and unsigned value follow the same addition. e.g.
         // 5 = 0000000000000101, 3 = 0000000000000011, -3 = 1111111111111101, 5 + (-3) = 0000000000000010
         increase_pc();
@@ -175,14 +170,14 @@ void sub_handler(od_t *src_od, od_t *dst_od) {
         // src: register (value: int64_t bit map)
         // dst: register (value: int64_t bit map)
         // (dst_od->value) = (dst_od->value) - (src_od->value) = (dst_od->value) + (-(src_od->value))
-        uint64_t val = *(uint64_t *) (dst_od->value) + (~(src_od->value) + 1);
+        uint64_t val = DEREF_VALUE(dst_od) + (~(src_od->value) + 1);
 
         int val_sign = ((val >> 63) & 0x1);
         int src_sign = (((src_od->value) >> 63) & 0x1);
-        int dst_sign = ((*(uint64_t *) (dst_od->value) >> 63) & 0x1);
+        int dst_sign = ((DEREF_VALUE(dst_od) >> 63) & 0x1);
 
         // set condition flags
-        cpu_flags.CF = (val > *(uint64_t *) (dst_od->value)); // unsigned
+        cpu_flags.CF = (val > DEREF_VALUE(dst_od)); // unsigned
 
         cpu_flags.ZF = (val == 0);
         cpu_flags.SF = val_sign;
@@ -190,7 +185,7 @@ void sub_handler(od_t *src_od, od_t *dst_od) {
         cpu_flags.OF = (src_sign == 1 && dst_sign == 0 && val_sign == 1) || (src_sign == 0 && dst_sign == 1 && val_sign == 0);
 
         // update registers
-        *(uint64_t *) (dst_od->value) = val;
+        DEREF_VALUE(dst_od) = val;
         // signed and unsigned value follow the same addition. e.g.
         // 5 = 0000000000000101, 3 = 0000000000000011, -3 = 1111111111111101, 5 + (-3) = 0000000000000010
         increase_pc();
@@ -199,31 +194,34 @@ void sub_handler(od_t *src_od, od_t *dst_od) {
 }
 
 void cmp_handler(od_t *src_od, od_t *dst_od) {
+    uint64_t val, dval;
     if (src_od->type == OD_IMM && dst_od->type == OD_MEM) {
         // src: register (value: int64_t bit map)
         // dst: register (value: int64_t bit map)
         // (dst_od->value) = (dst_od->value) - (src_od->value) = (dst_od->value) + (-(src_od->value))
-        uint64_t dst_pa = va2pa(dst_od->value);
-        uint64_t dval = cpu_read64bits_dram(dst_pa);
-        uint64_t val = dval + (~(src_od->value) + 1);
-
-        int val_sign = ((val >> 63) & 0x1);
-        int src_sign = (((src_od->value) >> 63) & 0x1);
-        int dst_sign = ((dval >> 63) & 0x1);
-
-        // set condition flags
-        cpu_flags.CF = (val > dval); // unsigned
-
-        cpu_flags.ZF = (val == 0);
-        cpu_flags.SF = val_sign;
-
-        cpu_flags.OF = (src_sign == 1 && dst_sign == 0 && val_sign == 1) || (src_sign == 0 && dst_sign == 1 && val_sign == 0);
-
-        // signed and unsigned value follow the same addition. e.g.
-        // 5 = 0000000000000101, 3 = 0000000000000011, -3 = 1111111111111101, 5 + (-3) = 0000000000000010
-        increase_pc();
-        return;
+        dval = virtual_read_data(dst_od->value);
+    } else if (src_od->type == OD_IMM && dst_od->type == OD_REG) {
+        dval = DEREF_VALUE(dst_od);
     }
+
+    val = dval + (~(src_od->value) + 1);
+
+    int val_sign = ((val >> 63) & 0x1);
+    int src_sign = (((src_od->value) >> 63) & 0x1);
+    int dst_sign = ((dval >> 63) & 0x1);
+
+    // set condition flags
+    cpu_flags.CF = (val > dval); // unsigned
+
+    cpu_flags.ZF = (val == 0);
+    cpu_flags.SF = val_sign;
+
+    cpu_flags.OF = (src_sign == 1 && dst_sign == 0 && val_sign == 1) || (src_sign == 0 && dst_sign == 1 && val_sign == 0);
+
+    // signed and unsigned value follow the same addition. e.g.
+    // 5 = 0000000000000101, 3 = 0000000000000011, -3 = 1111111111111101, 5 + (-3) = 0000000000000010
+    increase_pc();
+    return;
 }
 
 void jne_handler(od_t *src_od, od_t *dst_od) {
@@ -248,7 +246,7 @@ void lea_handler(od_t *src_od, od_t *dst_od) {
     if (src_od->type == OD_MEM && dst_od->type == OD_REG) {
         // src: virtual address - The effective address computed from instruction
         // dst: register - The register to load the effective address
-        *(uint64_t *) (dst_od->value) = src_od->value;
+        DEREF_VALUE(dst_od) = src_od->value;
         increase_pc();
         cpu_flags.__flags_value = 0;
         return;
@@ -274,12 +272,16 @@ void int_handler(od_t *src_od, od_t *dst_od) {
     }
 }
 
+void nop_handler(od_t *src_od, od_t *dst_od) {
+    increase_pc();
+}
+
 // from inst.c
 void parse_instruction(char *inst_str, inst_t *inst);
 
 // time, the craft of god
 static uint64_t global_time = 0;
-static uint64_t timer_period = 5;
+static uint64_t timer_period = 5000000;
 
 // instruction cycle is implemented in CPU
 // the only exposed interface outside CPU
@@ -296,11 +298,10 @@ void instruction_cycle() {
 
     // FETCH: get the instruction string by program counter
     char inst_str[MAX_INSTRUCTION_CHAR + 10];
-    uint64_t pc_pa = va2pa(cpu_pc.rip);
-    cpu_readinst_dram(pc_pa, inst_str);
+    virtual_read_inst(cpu_pc.rip, inst_str);
 
 #ifdef DEBUG_INSTRUCTION_CYCLE
-    printf("%8lx    %s\n", cpu_pc.rip, inst_str);
+    printf("[%4ld] %8lx    %s\n", global_time, cpu_pc.rip, inst_str);
 #endif
 
     // DECODE: decode the run-time instruction operands

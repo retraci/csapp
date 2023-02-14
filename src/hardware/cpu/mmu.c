@@ -1,12 +1,14 @@
 // Memory Management Unit
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 #include "headers/cpu.h"
 #include "headers/memory.h"
 #include "headers/common.h"
 #include "headers/address.h"
 #include "headers/interrupt.h"
+#include "headers/color.h"
 
 // -------------------------------------------- //
 // TLB cache struct
@@ -30,7 +32,7 @@ typedef struct {
 
 static tlb_cache_t mmu_tlb;
 
-static uint64_t page_walk(uint64_t vaddr_value);
+static uint64_t page_walk(uint64_t vaddr_value, int write_request);
 static void page_fault_handler(pte4_t *pte, address_t vaddr);
 
 static int read_tlb(uint64_t vaddr_value, uint64_t *paddr_value_ptr,
@@ -42,7 +44,9 @@ int swap_in(uint64_t saddr, uint64_t ppn);
 int swap_out(uint64_t saddr, uint64_t ppn);
 
 // consider this function va2pa as functional
-uint64_t va2pa(uint64_t vaddr) {
+// vaddr - the virutal address to be translated into physical address
+// write_request - if this translation is caused by write request
+uint64_t va2pa(uint64_t vaddr, int write_request) {
 #ifdef USE_NAVIE_VA2PA
     return vaddr % PHYSICAL_MEMORY_SPACE;
 #endif
@@ -53,7 +57,8 @@ uint64_t va2pa(uint64_t vaddr) {
     int tlb_hit = read_tlb(vaddr, &paddr, &free_tlb_line_index);
 
     // TODO: add flag to read tlb failed
-    if (tlb_hit) {
+    if (tlb_hit)
+    {
         // TLB read hit
         return paddr;
     }
@@ -63,15 +68,17 @@ uint64_t va2pa(uint64_t vaddr) {
 
 #ifdef USE_PAGETABLE_VA2PA
     // assume that page_walk is consuming much time
-    paddr = page_walk(vaddr);
+    paddr = page_walk(vaddr, write_request);
 #endif
 
 #if defined(USE_TLB_HARDWARE) && defined(USE_PAGETABLE_VA2PA)
     // refresh TLB
     // TODO: check if this paddr from page table is a legal address
-    if (paddr != 0) {
+    if (paddr != 0)
+    {
         // TLB write
-        if (write_tlb(vaddr, paddr, free_tlb_line_index) == 1) {
+        if (write_tlb(vaddr, paddr, free_tlb_line_index) == 1)
+        {
             return paddr;
         }
     }
@@ -82,24 +89,33 @@ uint64_t va2pa(uint64_t vaddr) {
 }
 
 #if defined(USE_TLB_HARDWARE) && defined(USE_PAGETABLE_VA2PA)
+void flush_tlb()
+{
+    memset(&mmu_tlb, 0, sizeof(tlb_cache_t));
+}
+
 static int read_tlb(uint64_t vaddr_value, uint64_t *paddr_value_ptr,
-                    int *free_tlb_line_index) {
+    int *free_tlb_line_index)
+{
     address_t vaddr = {
-            .address_value = vaddr_value
+        .address_value = vaddr_value
     };
 
     tlb_cacheset_t *set = &mmu_tlb.sets[vaddr.tlbi];
     *free_tlb_line_index = -1;
 
-    for (int i = 0; i < NUM_TLB_CACHE_LINE_PER_SET; ++i) {
+    for (int i = 0; i < NUM_TLB_CACHE_LINE_PER_SET; ++ i)
+    {
         tlb_cacheline_t *line = &set->lines[i];
 
-        if (line->valid == 0) {
+        if (line->valid == 0)
+        {
             *free_tlb_line_index = i;
         }
 
         if (line->tag == vaddr.tlbt &&
-            line->valid == 1) {
+            line->valid == 1)
+        {
             // TLB read hit
             *paddr_value_ptr = line->ppn;
             return 1;
@@ -112,18 +128,20 @@ static int read_tlb(uint64_t vaddr_value, uint64_t *paddr_value_ptr,
 }
 
 static int write_tlb(uint64_t vaddr_value, uint64_t paddr_value,
-                     int free_tlb_line_index) {
+    int free_tlb_line_index)
+{
     address_t vaddr = {
-            .address_value = vaddr_value
+        .address_value = vaddr_value
     };
 
     address_t paddr = {
-            .address_value = paddr_value
+        .address_value = paddr_value
     };
 
     tlb_cacheset_t *set = &mmu_tlb.sets[vaddr.tlbi];
 
-    if (0 <= free_tlb_line_index && free_tlb_line_index < NUM_TLB_CACHE_LINE_PER_SET) {
+    if (0 <= free_tlb_line_index && free_tlb_line_index < NUM_TLB_CACHE_LINE_PER_SET)
+    {
         tlb_cacheline_t *line = &set->lines[free_tlb_line_index];
 
         line->valid = 1;
@@ -149,7 +167,7 @@ static int write_tlb(uint64_t vaddr_value, uint64_t paddr_value,
 #ifdef USE_PAGETABLE_VA2PA
 // input - virtual address
 // output - physical address
-static uint64_t page_walk(uint64_t vaddr_value) {
+static uint64_t page_walk(uint64_t vaddr_value, int write_request) {
     // parse address
     address_t vaddr = {
             .vaddr_value = vaddr_value
@@ -176,7 +194,7 @@ static uint64_t page_walk(uint64_t vaddr_value) {
         int vpn = vpns[level];
         if (tab[vpn].present != 1) {
             // page fault
-            printf("\033[31;1mMMU (%lx): level %d page fault: [%x].present == 0\n\033[0m", vaddr_value, level + 1, vpn);
+            printf(REDSTR("MMU (%lx): level %d page fault: [%x].present == 0\n"), vaddr_value, level + 1, vpn);
             goto RAISE_PAGE_FAULT;
         }
 
@@ -192,9 +210,16 @@ static uint64_t page_walk(uint64_t vaddr_value) {
                 .ppn = pte->ppn,
                 .ppo = vpo    // page offset inside the 4KB page
         };
+
+        if (pte->readonly == 1 && write_request) {
+            // actually protection fault
+            printf(REDSTR("\tProtection Fault\n"));
+            goto RAISE_PAGE_FAULT;
+        }
+
         return paddr.paddr_value;
     } else {
-        printf("\033[31;1mMMU (%lx): level 4 page fault: [%x].present == 0\n\033[0m", vaddr_value, vaddr.vpn4);
+        printf(REDSTR("MMU (%lx): level 4 page fault: [%x].present == 0\n"), vaddr_value, vaddr.vpn4);
     }
 
     RAISE_PAGE_FAULT:

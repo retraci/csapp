@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "headers/algorithm.h"
+#include "headers/color.h"
 
 void trie_print(trie_node_t *root);
 
@@ -30,7 +31,7 @@ static void test_insert() {
 
     trie_free(root);
 
-    printf("\033[32;1m\tPass\033[0m\n");
+    printf(GREENSTR("Pass\n"));
 }
 
 int main() {

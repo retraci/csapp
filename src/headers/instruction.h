@@ -33,7 +33,9 @@ typedef struct INST_STRUCT {
     od_t src;        // operand src of instruction
     od_t dst;        // operand dst of instruction
 } inst_t;
+// sizeof(inst_t) = 0x40
 
 #define MAX_NUM_INSTRUCTION_CYCLE 100
+#define DEREF_VALUE(od) (*(uint64_t *)(od->value))
 
 #endif

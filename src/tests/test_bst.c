@@ -5,6 +5,7 @@
 #include <assert.h>
 #include "headers/algorithm.h"
 #include "headers/common.h"
+#include "headers/color.h"
 
 rb_tree_t *bst_construct_keystr(char *str);
 int bst_compare(rb_tree_t *a, rb_tree_t *b);
@@ -112,7 +113,7 @@ static void test_build() {
 
     bst_free(tree);
 
-    printf("\033[32;1m\tPass\033[0m\n");
+    printf(GREENSTR("\tPass"));
 }
 
 static void test_insert() {
@@ -189,7 +190,7 @@ static void test_insert() {
     bst_free(r);
     bst_free(a);
 
-    printf("\033[32;1m\tPass\033[0m\n");
+    printf(GREENSTR("\tPass"));
 }
 
 static void test_find() {
@@ -314,7 +315,7 @@ static void test_find() {
 
     bst_free(t);
 
-    printf("\033[32;1m\tPass\033[0m\n");
+    printf(GREENSTR("\tPass"));
 }
 
 static void test_delete() {
@@ -486,7 +487,7 @@ static void test_delete() {
 
     bst_free(r);
 
-    printf("\033[32;1m\tPass\033[0m\n");
+    printf(GREENSTR("\tPass"));
 }
 
 static void test_insert_delete() {
@@ -535,7 +536,7 @@ static void test_insert_delete() {
     free(array);
     bst_free(tree);
 
-    printf("\033[32;1m\tPass\033[0m\n");
+    printf(GREENSTR("\tPass"));
 }
 
 int main() {

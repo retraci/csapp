@@ -49,10 +49,12 @@ add_executable(csapp
         src/malloc/segregated_list.c
         src/malloc/small_list.c
 
+        src/process/fork.c
         src/process/pagefault.c
         src/process/process.c
         src/process/schedule.c
         src/process/syscall.c
+        src/process/vmarea.c
 
         src/tests/test_bst.c
         src/tests/test_context.c

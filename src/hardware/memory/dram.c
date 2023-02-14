@@ -16,7 +16,28 @@ void pagemap_update_time(uint64_t ppn);
 void pagemap_dirty(uint64_t ppn);
 #endif
 
-/*  
+uint64_t virtual_read_data(uint64_t vaddr) {
+    uint64_t paddr = va2pa(vaddr, 0);
+    uint64_t data = cpu_read64bits_dram(paddr);
+    return data;
+}
+
+void virtual_write_data(uint64_t vaddr, uint64_t data) {
+    uint64_t paddr = va2pa(vaddr, 1);
+    cpu_write64bits_dram(paddr, data);
+}
+
+void virtual_read_inst(uint64_t vaddr, char *buf) {
+    uint64_t paddr = va2pa(vaddr, 0);
+    cpu_readinst_dram(paddr, buf);
+}
+
+void virtual_write_inst(uint64_t vaddr, const char *str) {
+    uint64_t paddr = va2pa(vaddr, 1);
+    cpu_writeinst_dram(paddr, str);
+}
+
+/*
 Be careful with the x86-64 little endian integer encoding
 e.g. write 0x00007fd357a02ae0 to cache, the memory lapping should be:
     e0 2a a0 57 d3 7f 00 00
@@ -29,7 +50,7 @@ uint64_t cpu_read64bits_dram(uint64_t paddr) {
 #ifdef USE_SRAM_CACHE
     // try to load uint64_t from SRAM cache
     // little-endian
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 8; ++i) {
         val += (sram_cache_read(paddr + i) << (i * 8));
     }
 #else
@@ -57,7 +78,7 @@ void cpu_write64bits_dram(uint64_t paddr, uint64_t data) {
 #ifdef USE_SRAM_CACHE
     // try to write uint64_t to SRAM cache
     // little-endian
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 8; ++i) {
         sram_cache_write(paddr + i, (data >> (i * 8)) & 0xff);
     }
 #else
@@ -82,7 +103,7 @@ void cpu_write64bits_dram(uint64_t paddr, uint64_t data) {
 }
 
 void cpu_readinst_dram(uint64_t paddr, char *buf) {
-    for (int i = 0; i < MAX_INSTRUCTION_CHAR; i++) {
+    for (int i = 0; i < MAX_INSTRUCTION_CHAR; ++i) {
         buf[i] = (char) pm[paddr + i];
     }
 
@@ -96,7 +117,7 @@ void cpu_writeinst_dram(uint64_t paddr, const char *str) {
     int len = strlen(str);
     assert(len < MAX_INSTRUCTION_CHAR);
 
-    for (int i = 0; i < MAX_INSTRUCTION_CHAR; i++) {
+    for (int i = 0; i < MAX_INSTRUCTION_CHAR; ++i) {
         if (i < len) {
             pm[paddr + i] = (uint8_t) str[i];
         } else {
@@ -118,7 +139,7 @@ void cpu_writeinst_dram(uint64_t paddr, const char *str) {
 void bus_read_cacheline(uint64_t paddr, uint8_t *block) {
     uint64_t dram_base = ((paddr >> SRAM_CACHE_OFFSET_LENGTH) << SRAM_CACHE_OFFSET_LENGTH);
 
-    for (int i = 0; i < (1 << SRAM_CACHE_OFFSET_LENGTH); i++) {
+    for (int i = 0; i < (1 << SRAM_CACHE_OFFSET_LENGTH); ++i) {
         block[i] = pm[dram_base + i];
     }
 }
@@ -126,7 +147,7 @@ void bus_read_cacheline(uint64_t paddr, uint8_t *block) {
 void bus_write_cacheline(uint64_t paddr, uint8_t *block) {
     uint64_t dram_base = ((paddr >> SRAM_CACHE_OFFSET_LENGTH) << SRAM_CACHE_OFFSET_LENGTH);
 
-    for (int i = 0; i < (1 << SRAM_CACHE_OFFSET_LENGTH); i++) {
+    for (int i = 0; i < (1 << SRAM_CACHE_OFFSET_LENGTH); ++i) {
         pm[dram_base + i] = block[i];
     }
 }

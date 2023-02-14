@@ -9,11 +9,12 @@
 /*      Circular Doubly Linked List     */
 /*======================================*/
 
-int linkedlist_internal_add(linkedlist_internal_t *list, linkedlist_node_interface *i_node, uint64_t value) {
+int linkedlist_internal_add(linkedlist_internal_t *list,
+                            linkedlist_node_interface *i_node,
+                            uint64_t value) {
     if (list == NULL) {
         return 0;
     }
-
     assert(list->update_head != NULL);
     linkedlist_validate_interface(i_node, ILLIST_CONSTRUCT | ILLIST_PREV | ILLIST_NEXT | ILLIST_VALUE);
 
@@ -22,11 +23,12 @@ int linkedlist_internal_add(linkedlist_internal_t *list, linkedlist_node_interfa
     return linkedlist_internal_insert(list, i_node, node);
 }
 
-int linkedlist_internal_insert(linkedlist_internal_t *list, linkedlist_node_interface *i_node, uint64_t node) {
+int linkedlist_internal_insert(linkedlist_internal_t *list,
+                               linkedlist_node_interface *i_node,
+                               uint64_t node) {
     if (list == NULL) {
         return 0;
     }
-
     assert(list->update_head != NULL);
     linkedlist_validate_interface(i_node, ILLIST_PREV | ILLIST_NEXT);
 
@@ -55,13 +57,63 @@ int linkedlist_internal_insert(linkedlist_internal_t *list, linkedlist_node_inte
     return 1;
 }
 
-int linkedlist_internal_delete(linkedlist_internal_t *list, linkedlist_node_interface *i_node, uint64_t node) {
+int linkedlist_internal_insert_after(linkedlist_internal_t *list,
+                                     linkedlist_node_interface *i_node,
+                                     uint64_t prev,
+                                     uint64_t node) {
+    if (list == NULL) {
+        return 0;
+    }
+    assert(list->update_head != NULL);
+    assert(list->count >= 1);
+    assert(prev != (uint64_t) NULL);
+    linkedlist_validate_interface(i_node, ILLIST_PREV | ILLIST_NEXT);
+
+    uint64_t prev_next = i_node->get_node_next(prev);
+    i_node->set_node_next(node, prev_next);
+    i_node->set_node_prev(prev_next, node);
+    i_node->set_node_prev(node, prev);
+    i_node->set_node_next(prev, node);
+    list->count++;
+
+    return 1;
+}
+
+int linkedlist_internal_insert_before(linkedlist_internal_t *list,
+                                      linkedlist_node_interface *i_node,
+                                      uint64_t next,
+                                      uint64_t node) {
+    if (list == NULL) {
+        return 0;
+    }
+    assert(list->update_head != NULL);
+    assert(list->count >= 1);
+    assert(next != (uint64_t) NULL);
+    linkedlist_validate_interface(i_node, ILLIST_PREV | ILLIST_NEXT);
+
+    uint64_t next_prev = i_node->get_node_prev(next);
+    i_node->set_node_next(node, next);
+    i_node->set_node_prev(node, next_prev);
+    i_node->set_node_prev(next, node);
+    i_node->set_node_next(next_prev, node);
+    list->count++;
+
+    if (next == list->head) {
+        list->update_head(list, node);
+    }
+
+    return 1;
+}
+
+int linkedlist_internal_delete(linkedlist_internal_t *list,
+                               linkedlist_node_interface *i_node,
+                               uint64_t node) {
     if (list == NULL || node == NULL_ID) {
         return 0;
     }
-
     assert(list->update_head != NULL);
-    linkedlist_validate_interface(i_node, ILLIST_COMPARE | ILLIST_CHECKNULL | ILLIST_PREV | ILLIST_NEXT);
+    linkedlist_validate_interface(i_node,
+                                  ILLIST_COMPARE | ILLIST_CHECKNULL | ILLIST_PREV | ILLIST_NEXT);
 
     // update the prev and next pointers
     // same for the only one node situation
@@ -92,11 +144,12 @@ int linkedlist_internal_delete(linkedlist_internal_t *list, linkedlist_node_inte
     return 1;
 }
 
-uint64_t linkedlist_internal_index(linkedlist_internal_t *list, linkedlist_node_interface *i_node, uint64_t index) {
+uint64_t linkedlist_internal_index(linkedlist_internal_t *list,
+                                   linkedlist_node_interface *i_node,
+                                   uint64_t index) {
     if (list == NULL || index >= list->count) {
         return NULL_ID;
     }
-
     linkedlist_validate_interface(i_node, ILLIST_NEXT);
 
     uint64_t p = list->head;
@@ -108,11 +161,11 @@ uint64_t linkedlist_internal_index(linkedlist_internal_t *list, linkedlist_node_
 }
 
 // traverse the linked list
-uint64_t linkedlist_internal_next(linkedlist_internal_t *list, linkedlist_node_interface *i_node) {
+uint64_t linkedlist_internal_next(linkedlist_internal_t *list,
+                                  linkedlist_node_interface *i_node) {
     if (list == NULL || i_node->compare_nodes(list->head, NULL_ID) == 0) {
         return NULL_ID;
     }
-
     assert(list->update_head != NULL);
     linkedlist_validate_interface(i_node, ILLIST_NEXT);
 
@@ -128,7 +181,8 @@ uint64_t linkedlist_internal_next(linkedlist_internal_t *list, linkedlist_node_i
 /*======================================*/
 
 // Implementation of the list node access
-void linkedlist_validate_interface(linkedlist_node_interface *i_node, uint64_t flags) {
+void linkedlist_validate_interface(linkedlist_node_interface *i_node,
+                                   uint64_t flags) {
     assert(i_node != NULL);
 
     if ((flags & ILLIST_CONSTRUCT) != 0) {
@@ -269,7 +323,6 @@ void linkedlist_free(linkedlist_t *list) {
     if (list == NULL) {
         return;
     }
-
     linkedlist_internal_t *base = &(list->base);
     assert(base->update_head != NULL);
 

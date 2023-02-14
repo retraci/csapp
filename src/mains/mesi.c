@@ -380,8 +380,7 @@ int main() {
         }
 
 #ifdef DEBUG
-        if (do_print)
-        {
+        if (do_print) {
             print_cacheline();
         }
 #endif

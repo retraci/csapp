@@ -1,13 +1,3 @@
-/* BCST - Introduction to Computer Systems
- * Author:      yangminz@outlook.com
- * Github:      https://github.com/yangminz/bcst_csapp
- * Bilibili:    https://space.bilibili.com/4564101
- * Zhihu:       https://www.zhihu.com/people/zhao-yang-min
- * This project (code repository and videos) is exclusively owned by yangminz 
- * and shall not be used for commercial and profitting purpose 
- * without yangminz's permission.
- */
-
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -20,9 +10,10 @@
 #include "headers/instruction.h"
 #include "headers/interrupt.h"
 #include "headers/process.h"
+#include "headers/color.h"
 
 void map_pte4(pte4_t *pte, uint64_t ppn);
-void unmap_pte4(uint64_t ppn);
+void unmapall_pte4(uint64_t ppn);
 void page_map_init();
 void pagemap_dirty(uint64_t ppn);
 void pagemap_update_time(uint64_t ppn);
@@ -120,7 +111,7 @@ static void TestPageFaultHandlingCase1() {
         instruction_cycle();
     }
 
-    printf("\033[32;1m\tPass\033[0m\n");
+    printf(GREENSTR("Pass\n"));
 }
 
 static void TestPageFaultHandlingCase2() {
@@ -195,7 +186,7 @@ static void TestPageFaultHandlingCase2() {
         instruction_cycle();
     }
 
-    printf("\033[32;1m\tPass\033[0m\n");
+    printf(GREENSTR("Pass\n"));
 }
 
 static void TestPageFaultHandlingCase3() {
@@ -275,7 +266,7 @@ static void TestPageFaultHandlingCase3() {
         instruction_cycle();
     }
 
-    printf("\033[32;1m\tPass; Check the swapped out files.\033[0m\n");
+    printf(GREENSTR("Pass; Check the swapped out files.\n"));
 }
 
 int main() {
